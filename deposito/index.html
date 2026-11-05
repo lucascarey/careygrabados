@@ -38,6 +38,8 @@ button{font:inherit;cursor:pointer}
 .tabs button.on{background:var(--pine);color:#fff}
 .tabs button b{font:700 11px/1 var(--t);background:rgba(0,0,0,.08);padding:3px 6px;border-radius:99px}
 .tabs button b:empty{display:none}
+.tabs button b.debt{background:#d6402f;color:#fff}
+.tabs button.on b.debt{background:#d6402f}
 .tabs button.on b{background:rgba(255,255,255,.2)}
 #pv{position:fixed;inset:0;z-index:4;background:var(--bg);overflow:auto;padding:104px 16px 96px;display:none}
 #pv.open{display:block}
@@ -172,7 +174,7 @@ a{color:var(--pine)}
     <button class="btn" id="refresh" title="Actualizar">↻</button>
   </div>
 </div>
-<nav class="tabs"><button data-v="main" class="on">Pedidos <b id="tcPed"></b></button><button data-v="shelf">Estantería</button><button data-v="board">Corcho <b id="tcBoard"></b></button><button data-v="params">Parámetros</button></nav>
+<nav class="tabs"><button data-v="main" class="on">Pedidos <b id="tcPed"></b></button><button data-v="shelf">Estantería</button><button data-v="board">Corcho <b id="tcBoard"></b><b id="tcDebt" class="debt"></b></button><button data-v="params">Parámetros</button></nav>
 <div id="pv"><div class="wrap"><h1>Parámetros del láser</h1><p class="sub">Tocá cualquier valor para editarlo: se guarda solo en la planilla.</p><div id="pnote"></div><div class="pgrid" id="pgrid"></div></div></div>
 <div id="fade"></div>
 <div class="hint" id="hint">Pasá el mouse por una caja para ver el pedido, clic para fijarlo · Arrastrá las cajas listas al pozo · Ruedita para acercar</div>
@@ -305,10 +307,10 @@ function demoData() {
       P('DEMO-03', 'Mate criollo + termo', '1', 'Diseño personalizado', '', 'Cliente C', ''),
       P('DEMO-04', 'Botella ozz 500 ml', '1', 'Dos escudos', 'Retira', 'Cliente D', ''),
       P('DEMO-05', 'Botella ozz 500ml', '3', '', '', 'Cliente E', '', { ...E, fEntregado: d(700) }),
-      P('DEMO-06', 'Mate de calabaza', '1', 'Iniciales', '', 'Cliente F', '', { ...E, fEntregado: d(650) }),
+      P('DEMO-06', 'Mate de calabaza', '1', 'Iniciales', '', 'Cliente F', '', { ...E, pagado: false, fEntregado: d(650) }),
       P('DEMO-07', 'Mate Imperial', '1', 'Frase en la virola', '', 'Cliente G', '', { ...E, fEntregado: d(600) }),
       P('DEMO-08', 'Mate calabaza+mate imperial', '', 'Logo de emprendimiento', 'Retira', 'Cliente H', '', { ...E, fEntregado: d(500) }),
-      P('DEMO-09', 'Botella 1 litro negro', '', 'Escudo', 'Envío', 'Cliente I', '', { ...E, fEntregado: d(400) }),
+      P('DEMO-09', 'Botella 1 litro negro', '', 'Escudo', 'Envío', 'Cliente I', '', { ...E, pagado: false, fEntregado: d(400) }),
       P('DEMO-10', 'Botella OZZ 960 ml', '1', '', 'Envío', 'Cliente J', '', { ...E, fEntregado: d(300), ingreso: d(350) }),
       P('DEMO-11', 'Mate Criollo', '1', 'Espiral', 'Retira', 'Cliente K', '', { ingreso: d(170), grabado: true, fGrabado: d(20), diseno: 'demo' }),
       P('DEMO-12', 'Mate de calabaza', '1', 'Una palabra', 'Envío', 'Cliente L', '', { ingreso: d(60) }),
@@ -966,11 +968,12 @@ function polaroidTexture(p) {
   c.drawImage(thumb(it.clave, colorDe(p, it.clave)), 14, 14, 192, 192);
   c.fillStyle = '#1d1f1e'; c.font = '600 22px MuseoModerno, sans-serif'; c.textAlign = 'center';
   const n = p.nombre.length > 16 ? p.nombre.slice(0, 15) + '…' : p.nombre; c.fillText(n, 110, 238);
-  c.fillStyle = '#7a7a74'; c.font = '14px system-ui, sans-serif';
-  c.fillText(p.fEntregado ? new Date(p.fEntregado).toLocaleDateString('es-AR') : '', 110, 258);
+  if (!p.pagado) { c.fillStyle = '#d6402f'; c.font = '700 14px system-ui, sans-serif'; c.fillText('PAGO PENDIENTE', 110, 258); }
+  else { c.fillStyle = '#7a7a74'; c.font = '14px system-ui, sans-serif'; c.fillText(p.fEntregado ? new Date(p.fEntregado).toLocaleDateString('es-AR') : '', 110, 258); }
   const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; return t;
 }
 
+const debtMat = new THREE.MeshBasicMaterial({ color: '#e0362a', transparent: true, opacity: 1, depthWrite: false });
 function rebuildBoard() {
   while (pins.children.length) { const o = pins.children[0]; pins.remove(o); o.traverse(x => { if (x.material && x.material.map) x.material.map.dispose(); }); }
   const done = state.pedidos.filter(p => p.entregado).sort((a, b) => (b.fEntregado || 0) - (a.fEntregado || 0)).slice(0, 32);
@@ -979,6 +982,7 @@ function rebuildBoard() {
     const g = new THREE.Group();
     const card = mesh(new THREE.PlaneGeometry(.78, .95), new THREE.MeshStandardMaterial({ map: polaroidTexture(p), roughness: .9 }), false, false);
     g.add(card);
+    if (!p.pagado) { const fr = mesh(new THREE.PlaneGeometry(.9, 1.07), debtMat, false, false); fr.position.z = -.004; g.add(fr); }
     const pin = mesh(new THREE.SphereGeometry(.05, 24, 16), GLOSS); pin.position.set(0, .4, .05); g.add(pin);
     const col = i % cols, row = Math.floor(i / cols);
     g.position.set(-BOARD_W / 2 + cw * (col + .5), BOARD_H / 2 - rh * (row + .5), .06 + i * .0005);
@@ -1374,6 +1378,8 @@ function updateCounts() {
   STATIONS.forEach((st, i) => { const n = act.filter(p => zoneOf(p) === i).length; zoneLabels[i].innerHTML = `<span class="zi" style="background:${st.color}">${i + 1}</span><span><b>${st.title}</b><small>${st.sub}</small></span><span class="zn">${n}</span>`; });
   const tp = document.getElementById('tcPed'); if (tp) tp.textContent = act.length || '';
   const tb = document.getElementById('tcBoard'); if (tb) tb.textContent = state.pedidos.filter(p => p.entregado).length || '';
+  const debt = state.pedidos.filter(p => p.entregado && !p.pagado).length;
+  const td = document.getElementById('tcDebt'); if (td) td.textContent = debt ? '$ ' + debt : '';
   const now = Date.now() + (state.offset || 0);
   const porGrabar = act.filter(p => !p.grabado).length, listas = act.filter(p => p.grabado).length;
   const trab = act.filter(p => flags(p, now).trabado).length, sinD = act.filter(p => flags(p, now).sinDiseno).length;
@@ -1430,7 +1436,7 @@ hcEl.addEventListener('click', e => {
   if (a === 'open') openOrder(p.id);
   if (a === 'dUp') pickFile(p, 'diseno');
   if (a === 'bGrab') { pinnedId = null; flag(p, 'grabado', true); }
-  if (a === 'bDeliver') confirmBox('¿Entregado?', `Se marca el pedido de ${p.nombre} como entregado en la planilla.`, 'Entregado').then(ok => { if (ok) deliver(g); });
+  if (a === 'bDeliver') confirmEntrega(p).then(ok => { if (ok) deliver(g); });
 });
 function placeCard() {
   const id = view === 'main' && !panel.classList.contains('open') && !drag ? (pinnedId || hoverId) : null;
@@ -1558,7 +1564,7 @@ function endDrag(g) {
   if (!inPit(g.position.x, g.position.z)) return; // vuelve sola a su lugar
   if (estado(p) !== 'grabado') { toast('Esa caja todavía no está grabada'); return; }
   g.userData.hold = true;
-  confirmBox('¿Entregado?', `Se marca el pedido de ${p.nombre} como entregado en la planilla.`, 'Entregado').then(ok => {
+  confirmEntrega(p).then(ok => {
     g.userData.hold = false;
     if (ok) deliver(g);
   });
@@ -1572,7 +1578,7 @@ function deliver(g) {
   applyLocal({ ...p, entregado: true, grabado: true, fEntregado: Date.now(), fGrabado: p.fGrabado || Date.now() });
   call('flag', { id, field: 'entregado', value: true }).then(r => applyLocal(r.pedido))
     .catch(err => { applyLocal(prev); toast('No se pudo guardar: ' + err.message); });
-  toast(`Entregado: ${p.nombre}`, 'Deshacer', () => {
+  toast(`Entregado: ${p.nombre}${p.pagado ? '' : ' · pago pendiente, mirá el corcho'}`, 'Deshacer', () => {
     applyLocal({ ...prev }); call('flag', { id, field: 'entregado', value: false }).then(r => applyLocal(r.pedido)).catch(err => toast('No se pudo deshacer: ' + err.message));
   });
 }
@@ -1708,7 +1714,7 @@ function renderOrder(id) {
   if ($('#bGrab')) $('#bGrab').onclick = () => flag(p, 'grabado', true);
   if ($('#bUngrab')) $('#bUngrab').onclick = () => flag(p, 'grabado', false);
   if ($('#bUndeliver')) $('#bUndeliver').onclick = () => { flag(p, 'entregado', false); closePanel(); goView('main'); };
-  if ($('#bDeliver')) $('#bDeliver').onclick = () => confirmBox('¿Entregado?', `Se marca el pedido de ${p.nombre} como entregado en la planilla.`, 'Entregado').then(ok => { if (ok) deliver(boxes.get(p.id)); });
+  if ($('#bDeliver')) $('#bDeliver').onclick = () => confirmEntrega(p).then(ok => { if (ok) deliver(boxes.get(p.id)); });
   if (p.diseno) loadDesign(p, $('#dz'), $('#dDown'));
 }
 
@@ -1818,11 +1824,13 @@ function openDelivered(id) {
     <div class="design" id="ph" style="margin-bottom:12px">${p.foto ? '<p class="muted">Cargando foto…</p>' : ''}<div class="btns"><button class="btn" id="fUp">${p.foto ? 'Cambiar foto' : 'Subir foto real'}</button></div></div>
     <dl><dt>Producto</dt><dd>${esc(its.map(i => (i.cant > 1 ? i.cant + ' × ' : '') + PRODUCTOS[i.clave].nombre).join(' + '))}</dd>
     <dt>Cantidad</dt><dd>${esc(p.cantidad || '1')}</dd><dt>Diseño</dt><dd>${esc(p.idea || '—')}</dd><dt>Envío</dt><dd>${esc(p.envio || '—')}</dd>
-    <dt>WhatsApp</dt><dd>${waLink(p.whatsapp) ? `<a href="${waLink(p.whatsapp)}" target="_blank" rel="noopener">${esc(p.whatsapp)}</a>` : '—'}</dd><dt>Pagado</dt><dd>${p.pagado ? 'Sí' : 'No'}</dd></dl>
+    <dt>WhatsApp</dt><dd>${waLink(p.whatsapp) ? `<a href="${waLink(p.whatsapp)}" target="_blank" rel="noopener">${esc(p.whatsapp)}</a>` : '—'}</dd></dl>
+    ${p.pagado ? '' : '<p style="color:var(--bad);margin:0 0 8px;font-size:13px"><b>$</b> Pago pendiente. Tildá “Pagado” cuando te paguen.</p>'}<label class="chk"><input type="checkbox" id="fPagado" ${p.pagado ? 'checked' : ''}> Pagado</label>
     <div class="sec" id="dsec"><h3>Diseño grabado</h3><div class="design" id="dz">${p.diseno ? '<p class="muted">Cargando…</p><div class="btns"><button class="btn" id="dDown">Descargar</button></div>' : '<p class="muted" style="margin:0">No se cargó diseño.</p>'}</div></div>
     <div class="sec"><button class="btn" id="bUndeliver">Volver al depósito (no se entregó)</button></div>`;
   const $ = q => pbody.querySelector(q);
   $('#fUp').onclick = () => pickFile(p, 'foto');
+  $('#fPagado').onchange = e => flag(p, 'pagado', e.target.checked);
   $('#bUndeliver').onclick = () => { flag(p, 'entregado', false); closePanel(); goView('main'); };
   if (p.diseno) loadDesign(p, $('#dz'), $('#dDown'));
   if (p.foto) getFile(p.foto).then(f => { const el = $('#ph'); if (!el) return; el.querySelector('p.muted')?.remove(); el.insertAdjacentHTML('afterbegin', `<img src="${f.url}" alt="Foto">`); }).catch(() => {});
@@ -1839,6 +1847,10 @@ function toast(msg, btn, fn) {
   const b = document.getElementById('tbtn'); b.style.display = btn ? '' : 'none'; b.textContent = btn || '';
   b.onclick = () => { toastEl.style.display = 'none'; fn && fn(); };
   toastEl.style.display = 'flex'; clearTimeout(toastT); toastT = setTimeout(() => toastEl.style.display = 'none', btn ? 7000 : 3200);
+}
+function confirmEntrega(p) {
+  return p.pagado ? confirmBox('¿Entregado?', `Se marca el pedido de ${p.nombre} como entregado en la planilla.`, 'Entregado')
+    : confirmBox('¿Entregar sin cobrar?', `El pedido de ${p.nombre} figura sin pagar. Se entrega igual y queda como pago pendiente en el corcho.`, 'Entregar igual');
 }
 function confirmBox(title, text, yes = 'Sí') {
   const m = document.getElementById('confirm');
@@ -1921,6 +1933,7 @@ function tick() {
     if (u.flag.visible) { u.flagCloth.rotation.y = Math.sin(t * 5 + g.position.x) * .45; u.flag.position.y = BH + Math.abs(Math.sin(t * 3)) * .06; }
   }
   outlineM.opacity = .35 + .2 * Math.sin(t * 3);
+  debtMat.opacity = .25 + .75 * (.5 + .5 * Math.sin(t * 5));
   renderer.render(scene, camera);
   placeLabels();
   requestAnimationFrame(tick);
