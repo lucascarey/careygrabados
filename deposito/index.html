@@ -290,6 +290,7 @@ function demoCall(action, b) {
     if (action === 'upload') { const p = { ...find(b.id) }; const fid = 'demo_' + Math.random().toString(36).slice(2); (window.__files ||= {})[fid] = b; p[b.kind] = fid; saveDemo(p); return r({ pedido: p }); }
     if (action === 'file') { const f = (window.__files || {})[b.fileId]; return r(f ? { name: f.name, mime: f.mime, data: f.data } : { name: 'x.png', mime: 'image/png', data: '' }); }
     if (action === 'params') { const L = window.__demo.parametros; let q = L.find(x => x.clave === b.clave); if (!q) { q = { clave: b.clave }; L.push(q); } Object.assign(q, b.fields || {}); return r({ parametros: L }); }
+    if (action === 'compra') { const p = { ...find(b.id), compra: b.estado, fLlego: b.estado === 'Llegó' ? Date.now() : null }; saveDemo(p); return r({ pedido: p }); }
     if (action === 'stock') { const s = window.__demo.stock.find(s => s.clave === b.clave); if (s) s.cantidad = b.cantidad; return r({ stock: window.__demo.stock }); }
     r({});
   }, 150));
@@ -305,7 +306,7 @@ function demoData() {
       P('DEMO-01', 'Mate Acero (+ bombilla)', '1', 'Escudo del club', 'Retira', 'Cliente A', '', { ...E, fEntregado: d(900) }),
       P('DEMO-02', 'Botellas (SOLO GRABADO)', '5', 'Nombres de los chicos', 'Retira', 'Cliente B', '', { ...E, fEntregado: d(880) }),
       P('DEMO-03', 'Mate criollo + termo', '1', 'Diseño personalizado', '', 'Cliente C', ''),
-      P('DEMO-04', 'Botella ozz 500 ml', '1', 'Dos escudos', 'Retira', 'Cliente D', ''),
+      P('DEMO-04', 'Botella ozz 500 ml', '1', 'Dos escudos', 'Retira', 'Cliente D', '', { compra: 'En camino' }),
       P('DEMO-05', 'Botella ozz 500ml', '3', '', '', 'Cliente E', '', { ...E, fEntregado: d(700) }),
       P('DEMO-06', 'Mate de calabaza', '1', 'Iniciales', '', 'Cliente F', '', { ...E, pagado: false, fEntregado: d(650) }),
       P('DEMO-07', 'Mate Imperial', '1', 'Frase en la virola', '', 'Cliente G', '', { ...E, fEntregado: d(600) }),
@@ -314,8 +315,8 @@ function demoData() {
       P('DEMO-10', 'Botella OZZ 960 ml', '1', '', 'Envío', 'Cliente J', '', { ...E, fEntregado: d(300), ingreso: d(350) }),
       P('DEMO-11', 'Mate Criollo', '1', 'Espiral', 'Retira', 'Cliente K', '', { ingreso: d(170), grabado: true, fGrabado: d(20), diseno: 'demo' }),
       P('DEMO-12', 'Mate de calabaza', '1', 'Una palabra', 'Envío', 'Cliente L', '', { ingreso: d(60) }),
-      P('DEMO-13', 'Botella OZZ 960 ml', '1', 'Nombre y número', 'Envío', 'Cliente M', '', { ingreso: d(14) }),
-      P('DEMO-14', 'Termo Media Manija', '1', 'Logo', 'Retira', 'Cliente N', '', { ingreso: d(30), diseno: 'demo', color: 'negro' }),
+      P('DEMO-13', 'Botella OZZ 960 ml', '1', 'Nombre y número', 'Envío', 'Cliente M', '', { ingreso: d(14), compra: 'Llegó', fLlego: d(10) }),
+      P('DEMO-14', 'Termo Media Manija', '1', 'Logo', 'Retira', 'Cliente N', '', { ingreso: d(30), compra: 'Llegó', fLlego: d(28), diseno: 'demo', color: 'negro' }),
       P('DEMO-15', 'Mate Imperial', '40', 'Logo de empresa', 'Envío', 'Empresa O', '', { ingreso: d(5), diseno: 'demo', pagado: true })
     ],
     stock: Object.keys(PRODUCTOS).filter(k => k !== 'cliente').map((k, i) => ({ producto: PRODUCTOS[k].nombre, clave: k, cantidad: [4, 2, 0, 3, 1, 5, 6][i], minimo: 2, notas: '' })),
@@ -352,12 +353,25 @@ function colorDe(p, clave) {
   for (const k in COLORES) if (new RegExp('\\b' + k + '\\b').test(txt)) return COLORES[k];
   return COLOR_BASE[clave] || null;
 }
+// Productos que se compran por Mercado Libre a pedido: no llevan stock, el pedido pasa por Por comprar > En camino > Llegó
+const A_PEDIDO = new Set(['acero', 'ozz960', 'ozz500', 'matesystem', 'mediamanija']);
+const COMPRAS = ['Por comprar', 'En camino', 'Llegó'];
+const sinTilde = s => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+function compraDe(p) {
+  if (!items(p).some(i => A_PEDIDO.has(i.clave))) return null;
+  const t = sinTilde(p.compra);
+  if (t.startsWith('lleg')) return 'Llegó';
+  if (t.startsWith('en camino')) return 'En camino';
+  if (t.startsWith('por comprar')) return 'Por comprar';
+  return p.grabado || p.entregado ? 'Llegó' : 'Por comprar';
+}
+const esperaProducto = p => !p.grabado && !p.entregado && !!compraDe(p) && compraDe(p) !== 'Llegó';
 function estado(p) { return p.entregado ? 'entregado' : p.grabado ? 'grabado' : 'abierta'; }
 function flags(p, now) {
   const nuevo = !p.entregado && p.ingreso && now - p.ingreso < H24;
   let trabado = false;
   if (!p.entregado) {
-    if (!p.grabado) trabado = !p.ingreso || now - p.ingreso > H48;
+    if (!p.grabado) trabado = esperaProducto(p) ? false : (!p.ingreso || now - Math.max(p.ingreso, p.fLlego || 0) > H48);
     else trabado = now - (p.fGrabado || p.ingreso || 0) > H48;
   }
   const sinDiseno = !p.grabado && !p.entregado && !p.diseno;
@@ -609,7 +623,8 @@ function drawSticker(g) {
   const full = String(p.nombre || 'Sin nombre').trim() || 'Sin nombre';
   const prod = its.map(i => CORTO[i.clave]).join(' + ');
   const z = u.zone ?? 0;
-  const key = [full, prod, tot, z, p.pagado].join('|'); if (u.stKey === key) return; u.stKey = key;
+  const comp = esperaProducto(p) ? compraDe(p) : '';
+  const key = [full, prod, tot, z, p.pagado, comp].join('|'); if (u.stKey === key) return; u.stKey = key;
   const c = u.stTex.userData.ctx, W = 320, H = 168;
   c.clearRect(0, 0, W, H);
   c.save(); c.shadowColor = 'rgba(0,0,0,.18)'; c.shadowBlur = 6; c.shadowOffsetY = 2;
@@ -629,8 +644,9 @@ function drawSticker(g) {
   c.fillText(pr, 40, 120);
   if (tot > 1) { c.fillStyle = '#5E4B3B'; rr(c, W - 88, 96, 70, 36, 9); c.fill(); c.fillStyle = '#fff'; c.font = `700 24px ${FONT_T}`; c.textAlign = 'center'; c.fillText('x' + tot, W - 53, 123); c.textAlign = 'left'; }
   // código de barras decorativo
-  c.fillStyle = '#3a3a3a'; let x = 40; for (let i = 0; i < 26; i++) { const w = (i * 7 % 3) + 1; c.fillRect(x, 136, w, 12); x += w + 2; }
-  if (p.pagado) { c.fillStyle = '#2f9e57'; c.font = `700 18px ${FONT_T}`; c.fillText('PAGADO', 152, 148); }
+  if (comp) { c.fillStyle = comp === 'En camino' ? '#5f8fae' : '#e0a020'; rr(c, 40, 132, W - 64, 24, 7); c.fill(); c.fillStyle = '#fff'; c.font = `700 15px ${FONT_B}`; c.textAlign = 'center'; c.fillText('ESPERANDO · ' + comp.toUpperCase(), 40 + (W - 64) / 2, 149); c.textAlign = 'left'; }
+  else { c.fillStyle = '#3a3a3a'; let x = 40; for (let i = 0; i < 26; i++) { const w = (i * 7 % 3) + 1; c.fillRect(x, 136, w, 12); x += w + 2; } }
+  if (p.pagado && !comp) { c.fillStyle = '#2f9e57'; c.font = `700 18px ${FONT_T}`; c.fillText('PAGADO', 152, 148); }
   u.stTex.needsUpdate = true;
 }
 function updateBoxSigns(g, now) {
@@ -932,7 +948,7 @@ const shelfSlots = {}; // clave -> {lane, items, top, x, y, w}
 function rebuildShelfStock() {
   Object.entries(shelfSlots).forEach(([k, s]) => {
     const st = state.stock.find(x => x.clave === k);
-    const n = st && st.cantidad != null && !isNaN(st.cantidad) ? Math.max(0, st.cantidad) : 0;
+    const n = !A_PEDIDO.has(k) && st && st.cantidad != null && !isNaN(st.cantidad) ? Math.max(0, st.cantidad) : 0;
     if (s.shown === n) return; s.shown = n;
     while (s.items.children.length) s.items.remove(s.items.children[0]);
     const step = ANCHO[k] + .05, perRow = Math.max(1, Math.floor(s.w / step)), cap = perRow * 2;
@@ -1001,6 +1017,12 @@ function updateShelfLabels() {
     const s = state.stock.find(x => x.clave === k);
     const n = s && s.cantidad !== null && s.cantidad !== undefined && !isNaN(s.cantidad) ? s.cantidad : null;
     const nom = PRODUCTOS[k].nombre.replace('Termo ', '').replace('Botella ', '').replace(' (calabaza)', '');
+    if (A_PEDIDO.has(k)) {
+      const c = comprasDe(k);
+      el.textContent = nom + ' · ' + (c.por || c.camino ? [c.por ? c.por + ' por comprar' : '', c.camino ? c.camino + ' en camino' : ''].filter(Boolean).join(' · ') : 'a pedido');
+      el.className = 'slbl' + (c.por ? ' low' : '');
+      return;
+    }
     el.textContent = nom + ' · ' + (n === null ? 'sin contar' : n);
     el.className = 'slbl' + (n === null ? ' none' : (n === 0 || (s.minimo !== null && n <= s.minimo)) ? ' low' : '');
   });
@@ -1419,7 +1441,9 @@ function cardHtml(p) {
   if (f.sinDiseno) L.push(`<div class="fl"><em style="background:#e0a020">!</em>Falta cargar el diseño</div>`);
   L.push(p.pagado ? `<div class="fl"><em style="background:#2f9e57">$</em>Pagado</div>` : `<div class="fl"><em style="background:#b9b4a8">$</em>Sin pagar</div>`);
   if (p.envio) L.push(`<div class="fl"><em style="background:#6B7B84">→</em>${esc(p.envio)}</div>`);
-  const act = z === 0 ? ['dUp', 'Cargar diseño'] : z === 1 ? ['bGrab', 'Marcar grabado'] : ['bDeliver', 'Entregar'];
+  const espera = esperaProducto(p);
+  if (espera) L.push(`<div class="fl"><em style="background:#e0a020">ML</em>Esperando producto: ${compraDe(p)}</div>`);
+  const act = z === 0 ? ['dUp', 'Cargar diseño'] : z === 1 ? (espera ? ['llego', 'Llegó el producto'] : ['bGrab', 'Marcar grabado']) : ['bDeliver', 'Entregar'];
   return `<div class="h"><b>${esc(p.nombre || 'Sin nombre')}</b><button class="x" data-a="x" aria-label="Cerrar">×</button></div>
     <div class="pr">${esc(prod)}${p.color ? ' · ' + esc(p.color) : ''}</div>
     <span class="st" style="background:${col}24;color:${ST_INK[z]}"><i style="background:${col}"></i>${ST_TXT[z]}</span>
@@ -1436,6 +1460,7 @@ hcEl.addEventListener('click', e => {
   if (a === 'open') openOrder(p.id);
   if (a === 'dUp') pickFile(p, 'diseno');
   if (a === 'bGrab') { pinnedId = null; flag(p, 'grabado', true); }
+  if (a === 'llego') setCompra(p.id, 'Llegó');
   if (a === 'bDeliver') confirmEntrega(p).then(ok => { if (ok) deliver(g); });
 });
 function placeCard() {
@@ -1699,8 +1724,9 @@ function renderOrder(id) {
     <label class="chk"><input type="checkbox" id="fPagado" ${p.pagado ? 'checked' : ''}> Pagado</label>
     <div class="sec"><h3>Diseño aprobado</h3><div class="design" id="dz">${p.diseno ? '<p class="muted">Cargando imagen…</p>' : `<p class="muted" style="margin-top:0">${f.sinDiseno ? '<b style="color:#8a5a00">!</b> ' : ''}Todavía no hay diseño cargado.</p>`}
       <div class="btns">${p.diseno ? '<button class="btn primary" id="dDown">Descargar para LaserGRBL</button>' : ''}${st !== 'entregado' ? `<button class="btn" id="dUp">${p.diseno ? 'Cambiar diseño' : 'Cargar diseño'}</button>` : ''}</div></div></div>
+    ${compraDe(p) && st !== 'entregado' && !p.grabado ? `<div class="sec"><h3>Compra en Mercado Libre</h3><div class="btns" id="buySeg">${COMPRAS.map(c => `<button class="btn${c === compraDe(p) ? ' primary' : ''}" data-c="${c}">${c}</button>`).join('')}</div><p class="muted">Hasta que figure “Llegó” no se puede marcar como grabado.</p></div>` : ''}
     <div class="sec"><h3>Estado</h3><div class="btns">
-      ${st === 'abierta' ? '<button class="btn primary" id="bGrab">Marcar grabado</button>' : ''}
+      ${st === 'abierta' ? `<button class="btn primary" id="bGrab" ${esperaProducto(p) ? 'disabled' : ''}>Marcar grabado</button>` : ''}
       ${st === 'grabado' ? '<button class="btn" id="bUngrab">Volver a “falta grabar”</button><button class="btn primary" id="bDeliver">Marcar entregado</button>' : ''}
       ${st === 'entregado' ? '<button class="btn" id="bUndeliver">Volver al depósito</button>' : ''}
     </div>${st === 'grabado' ? '<p class="muted">También podés arrastrar la caja al pozo y la tira el de despacho.</p>' : ''}</div>
@@ -1708,6 +1734,7 @@ function renderOrder(id) {
   const $ = s => pbody.querySelector(s);
   $('#fPagado').onchange = e => flag(p, 'pagado', e.target.checked);
   pbody.querySelectorAll('.ed').forEach(el => { el.onchange = () => saveField(p.id, el.dataset.f, el.value, el); });
+  pbody.querySelectorAll('#buySeg button').forEach(b => b.onclick = () => { if (b.dataset.c !== compraDe(p)) setCompra(p.id, b.dataset.c); });
   pbody.querySelectorAll('[data-goparams]').forEach(b => b.onclick = () => { closePanel(); goView('params'); });
   $('#fColor').onchange = e => { const prev = { ...p }; applyLocal({ ...p, color: e.target.value }); call('update', { id: p.id, fields: { color: e.target.value } }).then(r => applyLocal(r.pedido)).catch(err => { applyLocal(prev); toast(err.message); }); };
   if ($('#dUp')) $('#dUp').onclick = () => pickFile(p, 'diseno');
@@ -1718,7 +1745,28 @@ function renderOrder(id) {
   if (p.diseno) loadDesign(p, $('#dz'), $('#dDown'));
 }
 
+// cuántas unidades de un producto "a pedido" hay por comprar / en camino
+function comprasDe(k) {
+  const r = { por: 0, camino: 0, pedidos: [] };
+  state.pedidos.forEach(p => {
+    if (p.entregado || p.grabado) return;
+    const it = items(p).filter(i => i.clave === k); if (!it.length) return;
+    const c = compraDe(p), n = it.reduce((a, b) => a + b.cant, 0);
+    if (c === 'Por comprar') r.por += n; else if (c === 'En camino') r.camino += n;
+    if (c !== 'Llegó') r.pedidos.push({ p, n, c });
+  });
+  return r;
+}
+function setCompra(id, est) {
+  const p = state.pedidos.find(x => x.id === id); if (!p) return;
+  const prev = { ...p };
+  applyLocal({ ...p, compra: est, fLlego: est === 'Llegó' ? Date.now() : null });
+  updateShelfLabels();
+  call('compra', { id, estado: est }).then(r => { applyLocal(r.pedido); updateShelfLabels(); })
+    .catch(err => { applyLocal(prev); updateShelfLabels(); toast('No se pudo guardar: ' + err.message); });
+}
 function flag(p, field, value) {
+  if (field === 'grabado' && value && esperaProducto(p)) { toast('Todavía no llegó el producto: marcá “Llegó” primero'); return; }
   const prev = { ...p }; const np = { ...p, [field]: value };
   if (field === 'grabado') np.fGrabado = value ? Date.now() : null;
   if (field === 'entregado') np.fEntregado = value ? Date.now() : null;
@@ -1778,10 +1826,15 @@ function openProduct(k) {
   const s = state.stock.find(x => x.clave === k) || { cantidad: null, minimo: null };
   ptitle.textContent = PRODUCTOS[k].nombre;
   const n = s.cantidad === null || s.cantidad === undefined || isNaN(s.cantidad) ? null : s.cantidad;
+  const aPed = A_PEDIDO.has(k), cmp = aPed ? comprasDe(k) : null;
   pbody.innerHTML = `
-    <div class="sec" style="border:0;margin:0;padding:0"><h3>Stock</h3>
+    ${aPed ? `<div class="sec" style="border:0;margin:0;padding:0"><h3>A pedido (Mercado Libre)</h3>
+      <p style="margin:0 0 8px"><b>${cmp.por}</b> por comprar · <b>${cmp.camino}</b> en camino</p>
+      ${cmp.pedidos.length ? cmp.pedidos.map(x => `<div class="edrow" style="display:flex;gap:8px;align-items:center;margin-bottom:6px"><span style="flex:1;font-size:14px">${esc(x.p.nombre)}${x.n > 1 ? ' · ' + x.n + ' ×' : ''}</span><select class="i" style="width:auto;padding:5px 8px" data-buy="${esc(x.p.id)}">${COMPRAS.map(c => `<option ${c === x.c ? 'selected' : ''}>${c}</option>`).join('')}</select></div>`).join('') : '<p class="muted">No hay pedidos esperando este producto.</p>'}
+      <p class="muted">No lleva stock: se compra cuando entra un pedido. Cuando llega, marcá “Llegó” y el pedido se puede grabar.</p></div>`
+    : `<div class="sec" style="border:0;margin:0;padding:0"><h3>Stock</h3>
       <div class="stockbox"><button class="btn" id="sm">−</button><span class="n" id="sn">${n === null ? '—' : n}</span><button class="btn" id="sp">+</button></div>
-      <p class="muted">${n === null ? 'Todavía sin contar. Tocá + para empezar.' : s.minimo !== null ? `Mínimo: ${s.minimo}` : ''} Se descuenta solo cuando entra un pedido.</p></div>
+      <p class="muted">${n === null ? 'Todavía sin contar. Tocá + para empezar.' : s.minimo !== null ? `Mínimo: ${s.minimo}` : ''} Se descuenta solo cuando entra un pedido.</p></div>`}
     <div class="sec"><h3>Nuevo pedido</h3>
       <label class="f">Nombre del cliente *</label><input class="i" id="oN" autocomplete="off">
       <label class="f">WhatsApp</label><input class="i" id="oW" inputmode="tel" autocomplete="off">
@@ -1795,8 +1848,9 @@ function openProduct(k) {
   const $ = q => pbody.querySelector(q);
   const setStock = v => { const prev = state.stock.map(x => ({ ...x })); const it = state.stock.find(x => x.clave === k); if (it) it.cantidad = v; else state.stock.push({ clave: k, producto: PRODUCTOS[k].nombre, cantidad: v, minimo: null }); updateShelfLabels(); $('#sn').textContent = v;
     clearTimeout(setStock.t); setStock.t = setTimeout(() => call('stock', { clave: k, cantidad: v }).then(r => { state.stock = r.stock; updateShelfLabels(); }).catch(err => { state.stock = prev; updateShelfLabels(); toast(err.message); }), 600); };
-  $('#sm').onclick = () => { const it = state.stock.find(x => x.clave === k); const c = it && it.cantidad != null ? it.cantidad : 0; setStock(Math.max(0, c - 1)); };
-  $('#sp').onclick = () => { const it = state.stock.find(x => x.clave === k); const c = it && it.cantidad != null ? it.cantidad : 0; setStock(c + 1); };
+  pbody.querySelectorAll('[data-buy]').forEach(sel => sel.onchange = () => setCompra(sel.dataset.buy, sel.value));
+  if ($('#sm')) $('#sm').onclick = () => { const it = state.stock.find(x => x.clave === k); const c = it && it.cantidad != null ? it.cantidad : 0; setStock(Math.max(0, c - 1)); };
+  if ($('#sp')) $('#sp').onclick = () => { const it = state.stock.find(x => x.clave === k); const c = it && it.cantidad != null ? it.cantidad : 0; setStock(c + 1); };
   $('#oGo').onclick = async () => {
     const nombre = $('#oN').value.trim(); if (!nombre) { $('#oN').focus(); toast('Falta el nombre'); return; }
     const order = { producto: PRODUCTOS[k].nombre, cantidad: Math.max(1, parseInt($('#oC').value, 10) || 1), nombre, whatsapp: $('#oW').value.trim(), color: $('#oK').value, idea: $('#oI').value.trim(), envio: $('#oE').value, pagado: $('#oP').checked };
