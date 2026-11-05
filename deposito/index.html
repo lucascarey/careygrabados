@@ -711,7 +711,7 @@ const design = { st: STATIONS[0] };
   put(d, TOR(.04, .014, 12, 24), WHITE, -.87, DH + .08, .22);
   design.steam = [0, 1, 2].map(i => put(d, SPH(.035, 16, 12), new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: .5, depthWrite: false }), -.95, DH + .2, .22, { cast: false }));
   // pantalla redondeada con un diseño
-  const mon = new THREE.Group(); mon.position.set(.8, DH, -.25); mon.rotation.y = -.5; d.add(mon);
+  const mon = new THREE.Group(); mon.position.set(.75, DH, -.2); mon.rotation.y = Math.PI + .45; d.add(mon);
   put(mon, CYL(.12, .14, .02, 32), DARK, 0, .01, 0);
   put(mon, CYL(.025, .025, .3, 16), DARK, 0, .16, 0);
   put(mon, RBOX(.84, .54, .05, .04), DARK, 0, .52, 0);
@@ -724,11 +724,9 @@ const design = { st: STATIONS[0] };
   // planta redonda
   put(g, CYL(.2, .16, .34, 40), M('#e8e2d6'), 2.15, .17, -2.35);
   put(g, SPH(.3), M('#a9c48f'), 2.15, .6, -2.35, { s: [1, 1.15, 1] });
-  stool(g, 0, -2.2, .55);
+  stool(g, 0, -2.6, .55);
   const w = buildWorker({ color: '#f1d08a' });
-  w.position.set(0, 0, -2.15); g.add(w); seat(w, .63);
-  // boina chiquita
-  put(w.userData.head, SPH(.25, 32, 16), M(shade('#f1d08a', .72)), .06, .33, -.02, { s: [1.25, .32, 1.15], rz: -.18 });
+  w.position.set(0, 0, -2.58); g.add(w); seat(w, .63);
   design.w = w; design.draw = { pts: [], i: 0, t: 0, doodle: 0 }; design.cheer = 0;
 }
 function doodlePath(k) {
@@ -762,7 +760,7 @@ function updateDesigner(dt, t) {
   P.position.y += (lift + .01 - P.position.y) * Math.min(1, dt * 8);
   P.rotation.y = drawing ? 0 : t * 1.5;
   ap(u.head, 'x', drawing ? .38 : -.05, dt, 4); ap(u.head, 'y', drawing ? (pt[0] - .5) * -.4 : Math.sin(t * .7) * .3, dt, 4);
-  ap(u.body, 'x', drawing ? .12 : 0, dt, 3);
+  
   design.steam.forEach((s, i) => { const k = (t * .35 + i / 3) % 1; s.position.y = .9 + .17 + k * .45; s.position.x = -.95 + Math.sin(t * 2 + i) * .03; s.material.opacity = .45 * (1 - k); s.scale.setScalar(.6 + k); });
 }
 
@@ -803,18 +801,14 @@ const laser = { st: STATIONS[1], t: 0, job: null, flash: 0, hx: -.6, hz: -.45 };
   const hose = new THREE.CatmullRomCurve3([new THREE.Vector3(1.0, DH + .3, -1.97), new THREE.Vector3(1.45, DH + .5, -2.15), new THREE.Vector3(1.9, .95, -2.4), new THREE.Vector3(1.9, .6, -2.4)]);
   put(g, new THREE.TubeGeometry(hose, 40, .055, 16), M('#d8dbd2'));
   // notebook
-  const nb = new THREE.Group(); nb.position.set(-.95, DH, -.2); nb.rotation.y = .45; d.add(nb);
+  const nb = new THREE.Group(); nb.position.set(-.95, DH, -.05); nb.rotation.y = Math.PI - .4; d.add(nb);
   put(nb, RBOX(.56, .025, .38, .012), M('#d8dbd2'), 0, .012, 0);
   const lid = new THREE.Group(); lid.position.set(0, .025, -.18); lid.rotation.x = -.25; nb.add(lid);
   put(lid, RBOX(.56, .37, .02, .012), M('#d8dbd2'), 0, .185, 0);
   laser.screen = canvasTex(256, 168, () => {});
   put(lid, new THREE.PlaneGeometry(.52, .33), new THREE.MeshBasicMaterial({ map: laser.screen, toneMapped: false }), 0, .185, .011, { cast: false });
   const w = buildWorker({ color: '#a9bfcd' });
-  w.position.set(-.45, 0, -2.25); g.add(w);
-  // antiparras levantadas sobre la frente
-  const gg = new THREE.Group(); gg.position.y = .2; gg.rotation.x = -.35; w.userData.head.add(gg);
-  put(gg, TOR(.372, .025, 12, 48), DARK, 0, 0, 0, { rx: Math.PI / 2, cast: false });
-  put(gg, RBOX(.38, .12, .08, .05), M('#8fc9a4', { roughness: .25 }), 0, 0, .35, { cast: false });
+  w.position.set(-.45, 0, -2.62); g.add(w);
   laser.w = w; laser.cheer = 0;
 }
 function drawLaserScreen(progress, name) {
@@ -833,8 +827,8 @@ function updateLaserWorker(dt, t) {
   if (laser.cheer > 0) laser.cheer -= dt;
   lookAnim(w, dt, t, hopOf(laser.cheer));
   const burning = laser.job && laser.job.st === 'burn';
-  if (burning) { ap(u.head, 'x', .4, dt, 4); ap(u.head, 'y', -.3 - laser.head.position.x * .4, dt, 6); ap(u.body, 'x', .12, dt, 4); }
-  else { const atLaptop = (t % 9) < 5.5; ap(u.head, 'x', .3, dt, 3); ap(u.head, 'y', atLaptop ? -.75 : -.2, dt, 3); ap(u.body, 'x', .05, dt, 3); }
+  if (burning) { ap(u.head, 'x', .4, dt, 4); ap(u.head, 'y', -.3 - laser.head.position.x * .4, dt, 6); }
+  else { const atLaptop = (t % 9) < 5.5; ap(u.head, 'x', .3, dt, 3); ap(u.head, 'y', atLaptop ? -.75 : -.2, dt, 3); }
 }
 
 /* ---------- 3 · Despacho ---------- */
@@ -848,10 +842,6 @@ const disp = { st: STATIONS[2], jobs: [], state: 'idle', path: [], timer: 0, car
   const w = buildWorker({ color: '#f0b9a0' });
   g.add(w); disp.home = new THREE.Vector3(1.0, 0, -1.25);
   w.position.copy(disp.home);
-  // gorra
-  const cm = M(shade('#f0b9a0', .7));
-  put(w.userData.head, new THREE.SphereGeometry(.39, 40, 20, 0, Math.PI * 2, 0, Math.PI * .42), cm, 0, .02, 0);
-  put(w.userData.head, CYL(.2, .2, .025, 40), cm, 0, .28, .3, { s: [1, 1, .8], rx: .25 });
   // planilla y birome flotando delante
   const clip = new THREE.Group(); clip.position.set(0, 1.35, .72); clip.rotation.x = -.9; w.add(clip);
   put(clip, RBOX(.34, .44, .025, .02), WOOD, 0, 0, 0);
@@ -1286,12 +1276,17 @@ function walk(dt, speed = 2.4) {
   return disp.path.length === 0;
 }
 const holdPoint = new THREE.Vector3(0, .95, 1.0);
+// pasillo entre la mesa de despacho y las cajas, para no atravesar nada
+const LANE_X = 2.95, LANE_Z = -.5;
+const lane = x => STATIONS[2].g.localToWorld(new THREE.Vector3(x, 0, LANE_Z));
 function dispatchStep(dt, t) {
   const w = disp.w, u = w.userData;
   if (disp.state === 'idle' && disp.jobs.length) {
     const g = disp.jobs[0];
     disp.state = 'toBox'; disp.target = g;
-    const s = g.scale.x; disp.path = [new THREE.Vector3(g.position.x, 0, g.position.z - (BD / 2 + 1.0) * s)];
+    const s = g.scale.x, ap2 = new THREE.Vector3(g.position.x, 0, g.position.z - (BD / 2 * s + .64));
+    const lx = THREE.MathUtils.clamp(STATIONS[2].g.worldToLocal(g.position.clone()).x, -2.3, LANE_X);
+    disp.path = [lane(disp.home.x), lane(lx), ap2];
   }
   const g = disp.target;
   if (disp.state === 'toBox') {
@@ -1303,8 +1298,12 @@ function dispatchStep(dt, t) {
     if (!g.userData.leaving) { disp.state = 'back'; disp.path = [homeW()]; }
     else if (disp.timer <= 0) {
       disp.jobs.shift(); disp.carry = g; g.userData.carried = true;
-      const dx = w.position.x - pit.position.x, dz = w.position.z - pit.position.z, d = Math.hypot(dx, dz) || 1;
-      disp.path = [new THREE.Vector3(pit.position.x + dx / d * (HOLE_R + 1.15), 0, pit.position.z + dz / d * (HOLE_R + 1.15))]; disp.state = 'toPit';
+      const loc = STATIONS[2].g.worldToLocal(w.position.clone());
+      const pts = loc.x > LANE_X - .3 || loc.z > QZ1 ? [] : [lane(loc.x), lane(LANE_X)];
+      const from = pts.length ? pts[pts.length - 1] : w.position;
+      const dx = from.x - pit.position.x, dz = from.z - pit.position.z, d = Math.hypot(dx, dz) || 1;
+      disp.path = [...pts, new THREE.Vector3(pit.position.x + dx / d * (HOLE_R + 1.15), 0, pit.position.z + dz / d * (HOLE_R + 1.15))]; disp.state = 'toPit';
+      disp.back = [lane(LANE_X), lane(disp.home.x), homeW()];
     }
   } else if (disp.state === 'toPit') {
     if (walk(dt, 2.0)) { disp.state = 'drop'; disp.timer = .5; }
@@ -1314,7 +1313,7 @@ function dispatchStep(dt, t) {
     if (disp.timer <= 0 && disp.carry) {
       const b = disp.carry; disp.carry = null; b.userData.carried = false;
       b.userData.fallPit = { v: 1.5, x0: b.position.x, z0: b.position.z, k: 0 };
-      disp.cheer = .9; disp.path = [homeW()]; disp.state = 'back';
+      disp.cheer = .9; disp.path = disp.back || [homeW()]; disp.state = 'back';
     }
   } else if (disp.state === 'back') {
     if (walk(dt)) { disp.state = 'idle'; }
