@@ -1,0 +1,1125 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Depósito Carey</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=MuseoModerno:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --sand:#E1DBC9; --slate:#6B7B84; --earth:#5E4B3B; --pine:#2D4530; --charcoal:#3C3C3C;
+  --bg:#f7f6f2; --panel:#ffffff; --line:#e4e0d6; --muted:#7a7a74; --ok:#2f9e57; --warn:#e0a020; --bad:#d9412b;
+  --t:'MuseoModerno', system-ui, sans-serif; --b: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--charcoal);font:15px/1.4 var(--b);-webkit-tap-highlight-color:transparent}
+#scene{position:fixed;inset:0;touch-action:none}
+#scene canvas{display:block}
+button{font:inherit;cursor:pointer}
+.top{position:fixed;left:16px;right:16px;top:12px;display:flex;gap:10px;align-items:flex-start;justify-content:space-between;pointer-events:none;z-index:5}
+.brand{pointer-events:auto;background:rgba(255,255,255,.85);backdrop-filter:blur(6px);border:1px solid var(--line);border-radius:14px;padding:8px 12px}
+.brand h1{font:700 18px/1.1 var(--t);margin:0;color:var(--pine)}
+.brand .sub{font-size:12px;color:var(--muted);margin-top:2px}
+.counts{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
+.chip{font-size:12px;padding:2px 8px;border-radius:99px;background:#f1efe8;border:1px solid var(--line);white-space:nowrap}
+.chip b{font-weight:700}
+.actions{display:flex;gap:6px;pointer-events:auto;flex-wrap:wrap;justify-content:flex-end}
+.btn{border:1px solid var(--line);background:#fff;border-radius:12px;padding:8px 12px;color:var(--charcoal)}
+.btn:hover{border-color:#cfc8b6}
+.btn.primary{background:var(--pine);border-color:var(--pine);color:#fff}
+.btn.danger{color:var(--bad)}
+.btn.small{padding:5px 9px;font-size:13px;border-radius:10px}
+.btn:disabled{opacity:.5;cursor:default}
+#back{position:fixed;left:16px;bottom:16px;z-index:6;display:none}
+.hint{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);font-size:12px;color:var(--muted);background:rgba(255,255,255,.8);padding:4px 10px;border-radius:99px;z-index:4;pointer-events:none;white-space:nowrap}
+#labels{position:fixed;inset:0;pointer-events:none;z-index:3;overflow:hidden}
+.lbl{position:absolute;left:0;top:0;transform:translate(-50%,-100%);display:flex;flex-direction:column;align-items:center;gap:3px;will-change:transform}
+.tag{font:700 11px/1 var(--t);letter-spacing:.04em;padding:4px 7px;border-radius:6px;background:var(--pine);color:#fff;box-shadow:0 2px 6px rgba(0,0,0,.15)}
+.warn{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font:700 16px/1 var(--t);color:#fff}
+.warn.strong{width:30px;height:30px;font-size:20px;background:var(--bad);box-shadow:0 0 0 4px rgba(217,65,43,.25);animation:bob 1s ease-in-out infinite}
+.warn.soft{background:var(--warn);opacity:.9;width:20px;height:20px;font-size:13px}
+@keyframes bob{50%{transform:translateY(-5px)}}
+.row{display:flex;gap:4px;align-items:center}
+.name{font-size:11.5px;background:rgba(255,255,255,.9);border:1px solid var(--line);padding:1px 7px;border-radius:99px;white-space:nowrap;max-width:120px;overflow:hidden;text-overflow:ellipsis;transform:translateY(0)}
+.qty{font:700 11px/1 var(--t);background:var(--earth);color:#fff;padding:3px 6px;border-radius:6px}
+.slbl{position:absolute;transform:translate(-50%,-100%);font:700 12px/1 var(--t);background:#fff;border:1px solid var(--line);padding:4px 7px;border-radius:8px;white-space:nowrap}
+.slbl.low{background:#fdeceb;border-color:#f3b8b0;color:var(--bad)}
+.slbl.none{color:var(--muted);font-weight:500}
+#drop{position:fixed;z-index:4;pointer-events:none;font:700 13px/1 var(--t);color:#fff;background:var(--ok);padding:7px 11px;border-radius:10px;display:none;transform:translate(-50%,-100%)}
+/* panel */
+#panel{position:fixed;top:12px;right:12px;bottom:12px;width:min(400px,calc(100vw - 24px));background:var(--panel);border:1px solid var(--line);border-radius:18px;box-shadow:0 10px 40px rgba(0,0,0,.12);z-index:10;display:flex;flex-direction:column;transform:translateX(calc(100% + 30px));transition:transform .28s ease}
+#panel.open{transform:none}
+.ph{padding:16px 18px 10px;border-bottom:1px solid var(--line);display:flex;gap:10px;align-items:flex-start}
+.ph h2{font:700 20px/1.15 var(--t);margin:0;flex:1;color:var(--charcoal)}
+.ph .x{border:0;background:#f1efe8;border-radius:10px;width:34px;height:34px;font-size:18px;line-height:1}
+.pb{padding:14px 18px 20px;overflow:auto;flex:1}
+.state{display:inline-block;font:700 12px/1 var(--t);padding:5px 9px;border-radius:8px;margin-bottom:10px}
+.s-abierta{background:#fff4dc;color:#8a5a00}.s-grabado{background:#e3f4e8;color:#1f6b3a}.s-entregado{background:#e9edf0;color:#3d4d57}
+dl{display:grid;grid-template-columns:100px 1fr;gap:6px 10px;margin:0 0 14px}
+dt{color:var(--muted);font-size:13px}
+dd{margin:0;word-break:break-word}
+.sec{border-top:1px solid var(--line);padding-top:12px;margin-top:12px}
+.sec h3{font:700 14px/1.2 var(--t);margin:0 0 8px;color:var(--pine)}
+.design{border:1px dashed #cfc8b6;border-radius:12px;padding:12px;text-align:center;background:#fbfaf6}
+.design img{max-width:100%;max-height:220px;display:block;margin:0 auto 10px;border-radius:6px;background:repeating-conic-gradient(#eee 0 25%,#fff 0 50%) 0 0/16px 16px}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+.btns .btn{flex:1;min-width:120px}
+.params{font-size:13px;border:1px solid var(--line);border-radius:10px;padding:8px 10px;margin-bottom:8px}
+.params b{font-weight:700}
+.params .pt{font:700 13px/1.2 var(--t);margin-bottom:4px}
+.params .pn{color:var(--muted);font-size:12px;margin-top:4px}
+label.f{display:block;font-size:13px;color:var(--muted);margin:10px 0 4px}
+input.i,select.i,textarea.i{width:100%;font:inherit;padding:9px 10px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--charcoal)}
+textarea.i{min-height:64px;resize:vertical}
+.chk{display:flex;align-items:center;gap:8px;margin:12px 0}
+.chk input{width:18px;height:18px}
+.stockbox{display:flex;align-items:center;gap:10px;margin:6px 0 4px}
+.stockbox .n{font:700 28px/1 var(--t);min-width:56px;text-align:center}
+.muted{color:var(--muted);font-size:13px}
+a{color:var(--pine)}
+/* toast / modal */
+#toast{position:fixed;left:50%;bottom:54px;transform:translateX(-50%);background:var(--charcoal);color:#fff;padding:10px 14px;border-radius:12px;z-index:20;display:none;gap:12px;align-items:center;max-width:calc(100vw - 32px);font-size:14px}
+#toast button{background:transparent;border:0;color:#9fe0b4;font-weight:700}
+.modal{position:fixed;inset:0;background:rgba(40,40,36,.35);display:none;place-items:center;z-index:30;padding:16px}
+.modal.open{display:grid}
+.card{background:#fff;border-radius:18px;padding:20px;width:min(380px,100%);box-shadow:0 20px 60px rgba(0,0,0,.2)}
+.card h2{font:700 20px/1.2 var(--t);margin:0 0 6px;color:var(--pine)}
+.card p{margin:0 0 14px;color:var(--muted)}
+#demo{position:fixed;left:50%;top:12px;transform:translateX(-50%);z-index:6;background:#fff4dc;color:#8a5a00;border:1px solid #f0d9a0;padding:5px 10px;border-radius:99px;font-size:12px;display:none}
+#loading{position:fixed;inset:0;display:grid;place-items:center;z-index:40;background:var(--bg);font:700 18px var(--t);color:var(--pine);transition:opacity .4s}
+@media (max-width:700px){
+  .top{left:10px;right:10px;top:8px}
+  .brand{padding:6px 10px}
+  .brand h1{font-size:16px}
+  .actions .btn{padding:7px 10px;font-size:13px}
+  #panel{top:auto;left:0;right:0;bottom:0;width:100%;height:78vh;border-radius:18px 18px 0 0;transform:translateY(105%)}
+  #panel.open{transform:none}
+  .hint{display:none}
+  #demo{top:auto;bottom:12px}
+  .name{font-size:9.5px;max-width:70px;padding:1px 5px}
+  .warn.strong{width:22px;height:22px;font-size:14px;box-shadow:0 0 0 3px rgba(217,65,43,.25)}
+  .warn.soft{width:15px;height:15px;font-size:10px}
+  .tag,.qty{font-size:9px;padding:3px 5px}
+  .counts .chip{font-size:11px;padding:1px 6px}
+  .brand .sub{display:none}
+}
+</style>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js"}}</script>
+</head>
+<body>
+<div id="loading">Armando el depósito…</div>
+<div id="scene"></div>
+<div id="labels"></div>
+<div id="drop">Soltá para entregar</div>
+<div id="demo">Modo demo: los cambios no se guardan</div>
+
+<div class="top">
+  <div class="brand">
+    <h1>Depósito Carey</h1>
+    <div class="sub" id="sync">Cargando…</div>
+    <div class="counts" id="counts"></div>
+  </div>
+  <div class="actions">
+    <button class="btn" id="goShelf">Estantería</button>
+    <button class="btn" id="goBoard">Corcho</button>
+    <button class="btn" id="refresh" title="Actualizar">↻</button>
+  </div>
+</div>
+<button class="btn primary" id="back">← Volver al depósito</button>
+<div class="hint" id="hint">Arrastrá una caja cerrada al camión para marcarla entregada · Tocá una caja para ver el pedido</div>
+
+<aside id="panel" aria-live="polite">
+  <div class="ph"><h2 id="ptitle"></h2><button class="x" id="pclose" aria-label="Cerrar">×</button></div>
+  <div class="pb" id="pbody"></div>
+</aside>
+
+<div id="toast"><span id="tmsg"></span><button id="tbtn"></button></div>
+
+<div class="modal" id="confirm"><div class="card">
+  <h2 id="ctitle"></h2><p id="ctext"></p>
+  <div class="btns"><button class="btn" id="cno">Cancelar</button><button class="btn primary" id="cyes">Sí</button></div>
+</div></div>
+
+<div class="modal" id="pinModal"><div class="card">
+  <h2>Entrar al depósito</h2>
+  <p>Poné el PIN de Grabados Carey.</p>
+  <input class="i" id="pinInput" type="password" inputmode="numeric" autocomplete="current-password" placeholder="PIN">
+  <p class="muted" id="pinErr" style="color:var(--bad);margin:8px 0 0;min-height:18px"></p>
+  <div class="btns" style="margin-top:8px"><button class="btn primary" id="pinOk">Entrar</button></div>
+</div></div>
+
+<input type="file" id="fileInput" accept="image/*,.svg,.pdf" hidden>
+
+<script type="module">
+import * as THREE from 'three';
+
+/* =========================================================
+   CONFIG
+   ========================================================= */
+// URL de la aplicación web de Apps Script (Implementar > Aplicación web). Vacía = modo demo.
+const API_URL = '';
+const POLL_MS = 20000;
+const H24 = 24 * 3600e3, H48 = 48 * 3600e3;
+
+const PRODUCTOS = {
+  criollo:     { nombre: 'Mate Criollo (calabaza)', alto: 10 },
+  imperial:    { nombre: 'Mate Imperial', alto: 11 },
+  acero:       { nombre: 'Mate de acero', alto: 10 },
+  mediamanija: { nombre: 'Termo Media Manija', alto: 32 },
+  matesystem:  { nombre: 'Termo Mate System OZZ', alto: 30 },
+  ozz960:      { nombre: 'Botella OZZ 960 ml', alto: 27 },
+  ozz500:      { nombre: 'Botella OZZ 500 ml', alto: 22 },
+  cliente:     { nombre: 'Producto del cliente (solo grabado)', alto: 27 }
+};
+const COLOR_BASE = { matesystem: '#55593f', mediamanija: '#222222', ozz960: '#2b2b2b', ozz500: '#2b2b2b', acero: '#1d1d1d', cliente: '#9aa0a6' };
+const COLORES = { negro:'#222222', blanco:'#f2f2ee', verde:'#55593f', 'verde militar':'#55593f', lila:'#b9a3d6', violeta:'#7d5ba6', rojo:'#b83a2e',
+  azul:'#2f4f7f', celeste:'#8fc1e3', rosa:'#e8a6b8', gris:'#8d9297', beige:'#d9cdb4', marron:'#6b4a33', 'marrón':'#6b4a33', naranja:'#e07b30', amarillo:'#e8c547', bordo:'#6e1f2a' };
+const PARAM_CLAVES = { imperial:/imperial/i, criollo:/calabaza|criollo/i, acero:/mate de acero/i, mediamanija:/media manija/i, matesystem:/mate system/i, ozz960:/960/, ozz500:/500/, cliente:/$^/ };
+
+/* =========================================================
+   DATOS (API o demo)
+   ========================================================= */
+const qs = new URLSearchParams(location.search);
+const api = qs.get('api') || API_URL;
+const DEMO = !api || qs.has('demo');
+let PIN = '';
+try { PIN = localStorage.getItem('carey_pin') || ''; } catch (e) {}
+
+let state = { pedidos: [], stock: [], parametros: [], ahora: Date.now() };
+
+async function call(action, body = {}) {
+  if (DEMO) return demoCall(action, body);
+  const res = await fetch(api, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action, pin: PIN, ...body }) });
+  const j = await res.json();
+  if (!j.ok) throw new Error(j.error || 'Error');
+  return j;
+}
+
+function demoCall(action, b) {
+  const find = id => state.pedidos.find(p => p.id === id);
+  return new Promise(r => setTimeout(() => {
+    if (action === 'data') return r(JSON.parse(JSON.stringify(window.__demo || (window.__demo = demoData()))));
+    if (action === 'flag') { const p = { ...find(b.id) }; p[b.field] = b.value; const k = { grabado: 'fGrabado', entregado: 'fEntregado' }[b.field]; if (k) p[k] = b.value ? Date.now() : null; if (b.field === 'entregado' && b.value && !p.grabado) { p.grabado = true; p.fGrabado = Date.now(); } saveDemo(p); return r({ pedido: p }); }
+    if (action === 'create') { const o = b.order; const p = { id: 'APP-' + Math.random().toString(36).slice(2, 8).toUpperCase(), producto: o.producto, cantidad: String(o.cantidad || 1), idea: o.idea || '', envio: o.envio || '', nombre: o.nombre, whatsapp: o.whatsapp || '', pagado: !!o.pagado, entregado: false, grabado: false, fEntregado: null, fGrabado: null, ingreso: Date.now(), diseno: '', foto: '', color: o.color || '' }; window.__demo.pedidos.push(p); return r({ pedido: p }); }
+    if (action === 'update') { const p = { ...find(b.id), ...b.fields }; saveDemo(p); return r({ pedido: p }); }
+    if (action === 'upload') { const p = { ...find(b.id) }; const fid = 'demo_' + Math.random().toString(36).slice(2); (window.__files ||= {})[fid] = b; p[b.kind] = fid; saveDemo(p); return r({ pedido: p }); }
+    if (action === 'file') { const f = (window.__files || {})[b.fileId]; return r(f ? { name: f.name, mime: f.mime, data: f.data } : { name: 'x.png', mime: 'image/png', data: '' }); }
+    if (action === 'stock') { const s = window.__demo.stock.find(s => s.clave === b.clave); if (s) s.cantidad = b.cantidad; return r({ stock: window.__demo.stock }); }
+    r({});
+  }, 150));
+}
+function saveDemo(p) { const a = window.__demo.pedidos; const i = a.findIndex(x => x.id === p.id); if (i >= 0) a[i] = p; }
+function demoData() {
+  const now = Date.now(), d = h => now - h * 3600e3;
+  const P = (id, producto, cantidad, idea, envio, nombre, whatsapp, extra = {}) => ({ id, producto, cantidad, idea, envio, nombre, whatsapp, pagado: false, entregado: false, grabado: false, fEntregado: null, fGrabado: null, ingreso: null, diseno: '', foto: '', color: '', ...extra });
+  const E = { pagado: true, entregado: true, grabado: true };
+  return {
+    ahora: now,
+    pedidos: [
+      P('DEMO-01', 'Mate Acero (+ bombilla)', '1', 'Escudo del club', 'Retira', 'Cliente A', '', { ...E, fEntregado: d(900) }),
+      P('DEMO-02', 'Botellas (SOLO GRABADO)', '5', 'Nombres de los chicos', 'Retira', 'Cliente B', '', { ...E, fEntregado: d(880) }),
+      P('DEMO-03', 'Mate criollo + termo', '1', 'Diseño personalizado', '', 'Cliente C', ''),
+      P('DEMO-04', 'Botella ozz 500 ml', '1', 'Dos escudos', 'Retira', 'Cliente D', ''),
+      P('DEMO-05', 'Botella ozz 500ml', '3', '', '', 'Cliente E', '', { ...E, fEntregado: d(700) }),
+      P('DEMO-06', 'Mate de calabaza', '1', 'Iniciales', '', 'Cliente F', '', { ...E, fEntregado: d(650) }),
+      P('DEMO-07', 'Mate Imperial', '1', 'Frase en la virola', '', 'Cliente G', '', { ...E, fEntregado: d(600) }),
+      P('DEMO-08', 'Mate calabaza+mate imperial', '', 'Logo de emprendimiento', 'Retira', 'Cliente H', '', { ...E, fEntregado: d(500) }),
+      P('DEMO-09', 'Botella 1 litro negro', '', 'Escudo', 'Envío', 'Cliente I', '', { ...E, fEntregado: d(400) }),
+      P('DEMO-10', 'Botella OZZ 960 ml', '1', '', 'Envío', 'Cliente J', '', { ...E, fEntregado: d(300), ingreso: d(350) }),
+      P('DEMO-11', 'Mate Criollo', '1', 'Espiral', 'Retira', 'Cliente K', '', { ingreso: d(170), grabado: true, fGrabado: d(20), diseno: 'demo' }),
+      P('DEMO-12', 'Mate de calabaza', '1', 'Una palabra', 'Envío', 'Cliente L', '', { ingreso: d(60) }),
+      P('DEMO-13', 'Botella OZZ 960 ml', '1', 'Nombre y número', 'Envío', 'Cliente M', '', { ingreso: d(14) }),
+      P('DEMO-14', 'Termo Media Manija', '1', 'Logo', 'Retira', 'Cliente N', '', { ingreso: d(30), diseno: 'demo', color: 'negro' }),
+      P('DEMO-15', 'Mate Imperial', '40', 'Logo de empresa', 'Envío', 'Empresa O', '', { ingreso: d(5), diseno: 'demo', pagado: true })
+    ],
+    stock: Object.keys(PRODUCTOS).filter(k => k !== 'cliente').map((k, i) => ({ producto: PRODUCTOS[k].nombre, clave: k, cantidad: [4, 2, 0, 3, 1, 5, 6][i], minimo: 2, notas: '' })),
+    parametros: [
+      { 'Producto': 'Mate imperial: virola', 'Potencia (%)': '80', 'Velocidad (mm/min)': '2000', 'Pasadas': '1', 'Líneas/mm': '12', 'Rotativo': 'No (cara superior)', 'Estado': 'A probar', 'Modo láser': 'M4 (Dynamic)', 'Notas': 'Pasta negra para marcar.' },
+      { 'Producto': 'Mate calabaza (opción A)', 'Potencia (%)': '35', 'Velocidad (mm/min)': '1500', 'Enfoque': '3er escalón del láser', 'Estado': 'Usado, elegir A o B' },
+      { 'Producto': 'Mate calabaza (opción B)', 'Potencia (%)': '30', 'Velocidad (mm/min)': '1300', 'Rotativo': 'Sí', 'Config rotativo ($100 / $101 / $121)': '$100=70 / $101=74 / —', 'Estado': 'Usado, elegir A o B' },
+      { 'Producto': 'Termo media manija', 'Rotativo': 'Sí, sacando la manija', 'Estado': 'Falta potencia y velocidad' },
+      { 'Producto': 'Termo OZZ 960 ml', 'Rotativo': 'Sí', 'Config rotativo ($100 / $101 / $121)': '— / $101=57 / $121=500', 'Estado': 'Falta potencia y velocidad' }
+    ]
+  };
+}
+
+/* ---------- interpretar pedidos ---------- */
+function claveDe(p) {
+  if (/solo grabado|del cliente|trae/.test(p)) return 'cliente';
+  if (/imperial/.test(p)) return 'imperial';
+  if (/criollo|calab/.test(p)) return 'criollo';
+  if (/acero/.test(p) && !/termo|botella/.test(p)) return 'acero';
+  if (/media manija|manija/.test(p)) return 'mediamanija';
+  if (/system|termo/.test(p)) return 'matesystem';
+  if (/500/.test(p)) return 'ozz500';
+  if (/botella|ozz|960|litro/.test(p)) return 'ozz960';
+  if (/mate/.test(p)) return 'criollo';
+  return '';
+}
+function items(p) {
+  const t = String(p.producto || '').toLowerCase();
+  const partes = t.split(/\+|,| y /).map(s => s.trim()).filter(Boolean);
+  const total = parseInt(p.cantidad, 10) || parseInt((t.match(/^\s*(\d+)/) || [])[1], 10) || 1;
+  const ks = []; (partes.length ? partes : [t]).forEach(x => { const k = claveDe(x); if (k) ks.push(k); });
+  if (!ks.length) ks.push('cliente');
+  return ks.map(k => ({ clave: k, cant: ks.length === 1 ? total : 1 }));
+}
+function colorDe(p, clave) {
+  const c = String(p.color || '').trim().toLowerCase();
+  if (/^#[0-9a-f]{6}$/.test(c)) return c;
+  if (COLORES[c]) return COLORES[c];
+  const txt = (String(p.producto) + ' ' + c).toLowerCase();
+  for (const k in COLORES) if (new RegExp('\\b' + k + '\\b').test(txt)) return COLORES[k];
+  return COLOR_BASE[clave] || null;
+}
+function estado(p) { return p.entregado ? 'entregado' : p.grabado ? 'grabado' : 'abierta'; }
+function flags(p, now) {
+  const nuevo = !p.entregado && p.ingreso && now - p.ingreso < H24;
+  let trabado = false;
+  if (!p.entregado) {
+    if (!p.grabado) trabado = !p.ingreso || now - p.ingreso > H48;
+    else trabado = now - (p.fGrabado || p.ingreso || 0) > H48;
+  }
+  const sinDiseno = !p.grabado && !p.entregado && !p.diseno;
+  return { nuevo, trabado, sinDiseno };
+}
+
+/* =========================================================
+   ESCENA
+   ========================================================= */
+const host = document.getElementById('scene');
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+host.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color('#f7f6f2');
+const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 200);
+
+scene.add(new THREE.HemisphereLight('#ffffff', '#d8d2c4', 1.6));
+const sun = new THREE.DirectionalLight('#ffffff', 1.6);
+sun.position.set(-6, 14, 9);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -16, right: 16, top: 12, bottom: -12, near: 1, far: 50 });
+sun.shadow.bias = -0.0005;
+scene.add(sun);
+
+const M = (color, o = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.85, metalness: 0, flatShading: true, ...o });
+const mesh = (geo, mat, cast = true, recv = true) => { const m = new THREE.Mesh(geo, mat); m.castShadow = cast; m.receiveShadow = recv; return m; };
+
+// piso con grilla y pared
+const floor = mesh(new THREE.PlaneGeometry(80, 60), M('#ffffff'), false, true);
+floor.rotation.x = -Math.PI / 2; scene.add(floor);
+const grid = new THREE.GridHelper(80, 80, '#dedad0', '#e9e6de'); grid.position.y = 0.002; scene.add(grid);
+const wall = mesh(new THREE.PlaneGeometry(80, 14), M('#fbfaf7', { emissive: '#ecebe6', emissiveIntensity: .8 }), false, true);
+wall.position.set(0, 7, -6.2); scene.add(wall);
+const zocalo = mesh(new THREE.BoxGeometry(80, 0.2, 0.08), M('#ece8de')); zocalo.position.set(0, 0.1, -6.15); scene.add(zocalo);
+
+/* ---------- productos low poly ---------- */
+function lathe(pts, mat, seg = 12) { return mesh(new THREE.LatheGeometry(pts.map(([r, y]) => new THREE.Vector2(r, y)), seg), mat); }
+function yerba(r, y) { const m = mesh(new THREE.CylinderGeometry(r, r, 0.02, 12), M('#6f7f3a')); m.position.y = y; return m; }
+function bombilla(x, y0, y1) { const b = mesh(new THREE.CylinderGeometry(0.018, 0.018, y1 - y0, 6), M('#c9c9c9', { metalness: .5, roughness: .35 })); b.position.set(x, (y0 + y1) / 2, 0); b.rotation.z = -0.25; return b; }
+
+// Cada producto mide 1 de alto, apoyado en y=0. "body" es el material que se pinta con el color del pedido.
+function buildProduct(clave, color) {
+  const g = new THREE.Group();
+  const metal = M('#c8c6c2', { metalness: .45, roughness: .4 });
+  if (clave === 'imperial') {
+    g.add(lathe([[0, 0], [.17, 0], [.2, .04], [.245, .18], [.25, .19]], M('#4a2b1a')));
+    g.add(lathe([[.25, .19], [.272, .42], [.255, .62], [.222, .75]], M(color || '#8b4a22')));
+    g.add(lathe([[.222, .75], [.238, .76], [.238, .98], [.205, .99], [.2, .9]], metal));
+    for (let i = 0; i < 4; i++) { const s = mesh(new THREE.BoxGeometry(.05, .3, .03), M('#3a2213')); const a = i * Math.PI / 2 + Math.PI / 4; s.position.set(Math.cos(a) * .245, .2, Math.sin(a) * .245); s.rotation.y = -a; g.add(s); }
+    g.add(yerba(.2, .9)); g.add(bombilla(.06, .85, 1.3));
+  } else if (clave === 'criollo') {
+    g.add(lathe([[0, 0], [.43, 0], [.46, .02], [.465, .5], [.43, .52]], M(color || '#6e4a38')));
+    g.add(lathe([[.43, .5], [.41, .6], [.385, .75], [.42, .9], [.46, .97]], M('#b8682a')));
+    g.add(lathe([[.46, .97], [.48, 1], [.4, 1], [.38, .94]], M('#d8b98f')));
+    const st = mesh(new THREE.BoxGeometry(.05, .44, .02), M('#efe2c4')); st.position.set(0, .26, .465); g.add(st);
+    g.add(yerba(.39, .93)); g.add(bombilla(.1, .85, 1.25));
+  } else if (clave === 'acero') {
+    const out = lathe([[0, 0], [.19, 0], [.205, .03], [.235, .45], [.23, .85], [.222, .97]], M(color || '#1d1d1d'));
+    g.add(out);
+    g.add(lathe([[.222, .97], [.232, 1], [.2, 1], [.198, .96]], metal));
+    const inner = mesh(new THREE.CylinderGeometry(.2, .18, .9, 12, 1, true), M('#d4d2ce', { metalness: .5, roughness: .35, side: THREE.BackSide })); inner.position.y = .53; g.add(inner);
+    const fondo = mesh(new THREE.CylinderGeometry(.18, .18, .01, 12), M('#d4d2ce', { metalness: .5, roughness: .35 })); fondo.position.y = .09; g.add(fondo);
+    g.add(bombilla(.06, .4, 1.25));
+  } else if (clave === 'mediamanija' || clave === 'matesystem') {
+    const body = M(color || COLOR_BASE[clave]);
+    g.add(lathe([[0, 0], [.13, 0], [.145, .02], [.145, .64], [.125, .7], [.115, .72]], body));
+    g.add(lathe([[.115, .72], [.112, .73], [.112, .85], [.1, .86]], metal));
+    g.add(lathe([[.1, .86], [.108, .865], [.108, .95], [.06, .97], [0, .97]], clave === 'mediamanija' ? M('#1a1a1a') : body));
+    const pico = mesh(new THREE.BoxGeometry(.07, .05, .05), clave === 'mediamanija' ? M('#c62f24') : M('#3b3d2c')); pico.position.set(.07, .985, 0); pico.rotation.z = -0.35; g.add(pico);
+    const hm = M('#2a2a2a');
+    const bar = mesh(new THREE.BoxGeometry(.03, .3, .05), hm); bar.position.set(.235, .47, 0); g.add(bar);
+    [.34, .6].forEach(y => { const a = mesh(new THREE.BoxGeometry(.1, .03, .05), hm); a.position.set(.19, y, 0); g.add(a); });
+  } else { // ozz960, ozz500, cliente
+    const fino = clave === 'ozz500' ? .86 : 1;
+    const body = M(color || COLOR_BASE[clave] || '#2b2b2b');
+    const R = r => r * fino;
+    g.add(lathe([[0, 0], [R(.15), 0], [R(.165), .02], [R(.165), .74], [R(.12), .8], [R(.105), .82], [R(.11), .86]], body));
+    g.add(lathe([[R(.12), .86], [R(.125), .87], [R(.125), .93], [R(.09), .95], [0, .95]], M('#1b1b1b')));
+    const sp = mesh(new THREE.BoxGeometry(.05, .09, .05), M('#1b1b1b')); sp.position.set(R(.03), 1.0, 0); sp.rotation.z = -0.3; g.add(sp);
+    const loop = mesh(new THREE.TorusGeometry(.05, .012, 4, 8), M('#1b1b1b')); loop.position.set(-R(.1), .97, 0); g.add(loop);
+    if (clave === 'cliente') { const tag = mesh(new THREE.BoxGeometry(.12, .08, .01), M('#f2e9c9')); tag.position.set(0, .45, R(.168)); g.add(tag); }
+  }
+  g.userData.clave = clave;
+  return g;
+}
+
+/* ---------- miniaturas de producto (para el corcho) ---------- */
+const thumbCache = {};
+function thumb(clave, color) {
+  const key = clave + (color || '');
+  if (thumbCache[key]) return thumbCache[key];
+  const S = 256, rt = new THREE.WebGLRenderTarget(S, S);
+  const sc = new THREE.Scene(); sc.background = new THREE.Color('#efe9db');
+  sc.add(new THREE.HemisphereLight('#fff', '#cfc6b0', 1.8)); const dl = new THREE.DirectionalLight('#fff', 1.4); dl.position.set(-2, 3, 4); sc.add(dl);
+  const p = buildProduct(clave, color); p.traverse(o => o.castShadow = false); sc.add(p);
+  const box = new THREE.Box3().setFromObject(p), size = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3());
+  const cam = new THREE.PerspectiveCamera(30, 1, .1, 50); const d = Math.max(size.y, size.x) / (2 * Math.tan(15 * Math.PI / 180)) * 1.25;
+  cam.position.set(c.x + d * .25, c.y + d * .2, c.z + d); cam.lookAt(c);
+  renderer.setRenderTarget(rt); renderer.render(sc, cam); renderer.setRenderTarget(null);
+  const px = new Uint8Array(S * S * 4); renderer.readRenderTargetPixels(rt, 0, 0, S, S, px);
+  const cv = document.createElement('canvas'); cv.width = cv.height = S; const ctx = cv.getContext('2d'); const img = ctx.createImageData(S, S);
+  for (let y = 0; y < S; y++) img.data.set(px.subarray((S - 1 - y) * S * 4, (S - y) * S * 4), y * S * 4);
+  ctx.putImageData(img, 0, 0); rt.dispose();
+  return (thumbCache[key] = cv);
+}
+
+/* ---------- caja de cartón ---------- */
+const BW = 1.3, BD = 1.3, BH = 0.85, T = 0.04;
+const cardboard = M('#c9a26f'), cardIn = M('#a9804f'), tapeM = M('#d9c08c');
+const outlineM = new THREE.MeshBasicMaterial({ color: '#43d17a', side: THREE.BackSide, transparent: true, opacity: 0.55, depthWrite: false });
+
+function buildBox(p) {
+  const g = new THREE.Group();
+  const add = (w, h, d, x, y, z, m = cardboard) => { const b = mesh(new THREE.BoxGeometry(w, h, d), m); b.position.set(x, y, z); g.add(b); return b; };
+  add(BW, T, BD, 0, T / 2, 0, cardIn);
+  add(BW, BH, T, 0, BH / 2, -BD / 2 + T / 2); add(BW, BH, T, 0, BH / 2, BD / 2 - T / 2);
+  add(T, BH, BD, -BW / 2 + T / 2, BH / 2, 0); add(T, BH, BD, BW / 2 - T / 2, BH / 2, 0);
+  // solapas: pivote en el borde de arriba de la pared de atrás y la de adelante
+  const flaps = [];
+  [[-1, 1], [1, -1]].forEach(([side, dir]) => {
+    const piv = new THREE.Group(); piv.position.set(0, BH, side * BD / 2);
+    const f = mesh(new THREE.BoxGeometry(BW, T * 0.8, BD / 2), cardboard); f.position.set(0, 0, dir * BD / 4); piv.add(f);
+    const tape = mesh(new THREE.BoxGeometry(.3, T * .9, .2), tapeM); tape.position.set(0, .004, dir * (BD / 2 - .1)); piv.add(tape);
+    piv.userData = { side, tape }; g.add(piv); flaps.push(piv);
+  });
+  const outline = new THREE.Mesh(new THREE.BoxGeometry(BW + .1, BH + .1, BD + .1), outlineM); outline.position.y = BH / 2; outline.visible = false; g.add(outline);
+  const content = new THREE.Group(); g.add(content);
+  g.userData = { id: p.id, flaps, outline, content, open: 1, target: 1, lift: 0, liftT: 0, isBox: true };
+  g.traverse(o => { if (o.isMesh) o.userData.box = g; });
+  return g;
+}
+
+function fillBox(g, p) {
+  const c = g.userData.content; while (c.children.length) c.remove(c.children[0]);
+  const its = items(p).slice(0, 3);
+  const n = its.length, spacing = n > 1 ? 0.42 : 0;
+  its.forEach((it, i) => {
+    const pr = buildProduct(it.clave, colorDe(p, it.clave));
+    const s = n > 1 ? 0.75 : 1.0;
+    pr.scale.setScalar(s); pr.position.set((i - (n - 1) / 2) * spacing, T, (i % 2 ? .12 : -.08) * (n > 1 ? 1 : 0));
+    c.add(pr);
+  });
+  g.traverse(o => { if (o.isMesh) o.userData.box = g; });
+  g.userData.sig = sigOf(p);
+}
+const sigOf = p => [p.producto, p.cantidad, p.color].join('|');
+
+function setFlapAngles(g) {
+  const o = g.userData.open; // 0 cerrada, 1 abierta
+  g.userData.flaps.forEach(piv => {
+    const s = piv.userData.side; // -1 atrás, 1 adelante
+    piv.rotation.x = (s === -1 ? -1 : 1) * o * Math.PI * 0.68;
+    piv.userData.tape.visible = o < 0.05;
+  });
+  g.userData.content.visible = o > 0.12;
+}
+
+/* ---------- camión ---------- */
+const truck = new THREE.Group();
+{
+  const L = 7, W = 2.8, Hh = 2.7, F = 1.05; // largo, ancho, alto, altura del piso
+  const ext = M('#f1f1ee'), inside = M('#d5d0c6'), dark = M('#3a3a3a'), red = M('#c62f24');
+  const add = (geo, m, x, y, z, ry = 0) => { const b = mesh(geo, m); b.position.set(x, y, z); b.rotation.y = ry; truck.add(b); return b; };
+  add(new THREE.BoxGeometry(L, .12, W), inside, L / 2, F, 0);                 // piso
+  truck.userData.roof = add(new THREE.BoxGeometry(L, .1, W), ext, L / 2, F + Hh, 0); // techo
+  add(new THREE.BoxGeometry(L, Hh, .08), ext, L / 2, F + Hh / 2, -W / 2);      // lados
+  add(new THREE.BoxGeometry(L, Hh, .08), ext, L / 2, F + Hh / 2, W / 2);
+  add(new THREE.BoxGeometry(.08, Hh, W), inside, L, F + Hh / 2, 0);            // fondo
+  add(new THREE.BoxGeometry(L - .1, Hh - .1, .02), inside, L / 2, F + Hh / 2, -W / 2 + .05);
+  add(new THREE.BoxGeometry(L - .1, Hh - .1, .02), inside, L / 2, F + Hh / 2, W / 2 - .05);
+  add(new THREE.BoxGeometry(.14, Hh + .2, .14), dark, 0, F + Hh / 2, -W / 2);  // marco
+  add(new THREE.BoxGeometry(.14, Hh + .2, .14), dark, 0, F + Hh / 2, W / 2);
+  add(new THREE.BoxGeometry(.14, .14, W + .14), dark, 0, F + Hh + .05, 0);
+  add(new THREE.BoxGeometry(.2, .25, W + .3), dark, -.05, F - .2, 0);          // paragolpe
+  [-1, 1].forEach(s => {                                                       // puertas abiertas
+    add(new THREE.BoxGeometry(.06, Hh - .05, W / 2), ext, -0.02, F + Hh / 2, s * (W / 2 + W / 4 + .05)).rotation.y = 0;
+    add(new THREE.BoxGeometry(.08, .18, .12), red, -.1, F + .05, s * (W / 2 - .15));
+  });
+  [L - 1.2, L - 2.4].forEach(x => [-1, 1].forEach(s => { const w = add(new THREE.CylinderGeometry(.5, .5, .35, 10), dark, x, .5, s * (W / 2 - .25)); w.rotation.x = Math.PI / 2; }));
+  // rampa
+  const ramp = add(new THREE.BoxGeometry(2.2, .06, 1.6), M('#b9b4aa'), -1.0, F / 2, 0); ramp.rotation.z = Math.atan2(F, 2.2);
+  scene.add(truck);
+}
+const dropZone = mesh(new THREE.PlaneGeometry(3.4, 3.4), new THREE.MeshBasicMaterial({ color: '#43d17a', transparent: true, opacity: 0, depthWrite: false }), false, false);
+dropZone.rotation.x = -Math.PI / 2; dropZone.position.y = 0.01; scene.add(dropZone);
+function placeDropZone() { const p = new THREE.Vector3(-1.4, 0, 0).applyMatrix4(truck.matrixWorld); dropZone.position.set(p.x, .01, p.z); dropZone.rotation.z = truck.rotation.y; dropZone.scale.setScalar(truck.scale.x); }
+function inTruckZone(x, z) { const v = truck.worldToLocal(new THREE.Vector3(x, 0, z)); return v.x > -3.1 && v.x < 3 && Math.abs(v.z) < 1.8; }
+
+/* ---------- estantería ---------- */
+const shelf = new THREE.Group();
+const SHELF_ORDER = [['imperial', 'criollo', 'acero'], ['mediamanija', 'matesystem'], ['ozz960', 'ozz500']];
+const shelfSlots = {}; // clave -> {group, anchor}
+{
+  const wood = M('#c8a879'), woodD = M('#a88a5f');
+  const W = 3.6, D = .75, levels = [.15, 1.45, 2.75, 4.05];
+  levels.forEach(y => { const b = mesh(new THREE.BoxGeometry(W, .08, D), wood); b.position.set(0, y, 0); shelf.add(b); });
+  [-W / 2, W / 2].forEach(x => { const b = mesh(new THREE.BoxGeometry(.08, 4.2, D), woodD); b.position.set(x, 2.1, 0); shelf.add(b); });
+  const back = mesh(new THREE.BoxGeometry(W, 4.2, .04), M('#e8dcc6')); back.position.set(0, 2.1, -D / 2); shelf.add(back);
+  const sign = mesh(new THREE.BoxGeometry(1.6, .32, .04), M('#2D4530')); sign.position.set(0, 4.45, -.2); shelf.add(sign);
+  const size = { imperial: .9, criollo: .8, acero: .85, mediamanija: 1.15, matesystem: 1.1, ozz960: 1.1, ozz500: .92 };
+  SHELF_ORDER.forEach((fila, li) => {
+    const y = levels[2 - li] + .04;
+    fila.forEach((k, i) => {
+      const pr = buildProduct(k); pr.scale.setScalar(size[k]);
+      pr.position.set((i - (fila.length - 1) / 2) * (W / fila.length), y, 0);
+      pr.traverse(o => { if (o.isMesh) o.userData.shelfItem = k; });
+      shelf.add(pr);
+      shelfSlots[k] = { group: pr, top: new THREE.Vector3(pr.position.x, y + size[k] * 1.1 + .1, .1) };
+    });
+  });
+  shelf.traverse(o => { if (o.isMesh) o.userData.shelf = true; });
+  shelf.position.set(-9.4, 0, -4.9); shelf.rotation.y = 0.35;
+  scene.add(shelf);
+}
+
+/* ---------- corcho ---------- */
+const board = new THREE.Group();
+const BOARD_W = 5.6, BOARD_H = 3.0;
+{
+  const cv = document.createElement('canvas'); cv.width = 512; cv.height = 276; const c = cv.getContext('2d');
+  c.fillStyle = '#c99a5b'; c.fillRect(0, 0, 512, 276);
+  for (let i = 0; i < 2600; i++) { c.fillStyle = Math.random() < .5 ? 'rgba(120,80,40,.25)' : 'rgba(240,210,160,.25)'; c.fillRect(Math.random() * 512, Math.random() * 276, 2 + Math.random() * 3, 2 + Math.random() * 2); }
+  const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
+  const cork = mesh(new THREE.BoxGeometry(BOARD_W, BOARD_H, .08), [M('#a37444'), M('#a37444'), M('#a37444'), M('#a37444'), new THREE.MeshStandardMaterial({ map: tex, roughness: 1 }), M('#a37444')], false, true);
+  board.add(cork);
+  const fr = M('#7a5532');
+  [[BOARD_W + .2, .12, 0, BOARD_H / 2], [BOARD_W + .2, .12, 0, -BOARD_H / 2], [.12, BOARD_H, -BOARD_W / 2, 0], [.12, BOARD_H, BOARD_W / 2, 0]].forEach(([w, h, x, y]) => { const b = mesh(new THREE.BoxGeometry(w, h, .14), fr); b.position.set(x, y, .02); board.add(b); });
+  board.traverse(o => { if (o.isMesh) o.userData.board = true; });
+  board.position.set(-2.2, 3.3, -6.1);
+  scene.add(board);
+}
+const pins = new THREE.Group(); board.add(pins);
+
+function polaroidTexture(p) {
+  const it = items(p)[0];
+  const cv = document.createElement('canvas'); cv.width = 220; cv.height = 270; const c = cv.getContext('2d');
+  c.fillStyle = '#fffdf8'; c.fillRect(0, 0, 220, 270);
+  c.drawImage(thumb(it.clave, colorDe(p, it.clave)), 14, 14, 192, 192);
+  c.fillStyle = '#3C3C3C'; c.font = '600 22px MuseoModerno, sans-serif'; c.textAlign = 'center';
+  const n = p.nombre.length > 16 ? p.nombre.slice(0, 15) + '…' : p.nombre; c.fillText(n, 110, 238);
+  c.fillStyle = '#7a7a74'; c.font = '14px system-ui, sans-serif';
+  c.fillText(p.fEntregado ? new Date(p.fEntregado).toLocaleDateString('es-AR') : '', 110, 258);
+  const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+
+function rebuildBoard() {
+  while (pins.children.length) { const o = pins.children[0]; pins.remove(o); o.traverse(x => { if (x.material && x.material.map) x.material.map.dispose(); }); }
+  const done = state.pedidos.filter(p => p.entregado).sort((a, b) => (b.fEntregado || 0) - (a.fEntregado || 0)).slice(0, 21);
+  const cols = 7, cw = BOARD_W / cols, rh = BOARD_H / 3;
+  done.forEach((p, i) => {
+    const g = new THREE.Group();
+    const card = mesh(new THREE.PlaneGeometry(.62, .76), new THREE.MeshStandardMaterial({ map: polaroidTexture(p), roughness: .9 }), false, false);
+    g.add(card);
+    const pin = mesh(new THREE.SphereGeometry(.05, 6, 4), M(['#c62f24', '#2D4530', '#6B7B84', '#e0a020'][i % 4])); pin.position.set(0, .32, .05); g.add(pin);
+    const col = i % cols, row = Math.floor(i / cols);
+    g.position.set(-BOARD_W / 2 + cw * (col + .5), BOARD_H / 2 - rh * (row + .5), .06 + i * .0005);
+    g.rotation.z = (((i * 37) % 11) - 5) * 0.012;
+    g.traverse(o => { if (o.isMesh) { o.userData.board = true; o.userData.pinned = p.id; } });
+    pins.add(g);
+  });
+}
+
+/* =========================================================
+   CÁMARA
+   ========================================================= */
+const views = {};
+let view = 'main';
+const camAnim = { from: null, to: null, t: 1 };
+const isPortrait = () => innerWidth / innerHeight < 0.9;
+
+function fitMain() {
+  const portrait = isPortrait();
+  const dir = portrait ? new THREE.Vector3(0, 1.7, 1).normalize() : new THREE.Vector3(0, 1.2, 1).normalize();
+  const target = portrait ? new THREE.Vector3(-0.4, 0, 1.6) : new THREE.Vector3(0, 0, -1.2);
+  const pts = portrait
+    ? [[-4.2, 0, 7.2], [3.4, 0, 7.2], [-4.2, 0, -3.9], [3.4, 0, -3.9]]
+    : [[-10.6, 0, 3.0], [10.0, 0, 3.0], [-10.6, 4.6, -4.6], [10.0, 3.2, -1], [-2.2, 4.9, -6.1]];
+  camera.fov = portrait ? 40 : 32; camera.updateProjectionMatrix();
+  let lo = 4, hi = 80;
+  for (let k = 0; k < 30; k++) {
+    const d = (lo + hi) / 2; camera.position.copy(target).addScaledVector(dir, d); camera.lookAt(target); camera.updateMatrixWorld();
+    const ok = pts.every(([x, y, z]) => { const v = new THREE.Vector3(x, y, z).project(camera); return Math.abs(v.x) < .98 && v.y < (portrait ? .42 : .84) && v.y > -.95; });
+    ok ? hi = d : lo = d;
+  }
+  return { pos: target.clone().addScaledVector(dir, hi), look: target, fov: camera.fov };
+}
+function frontOf(obj, w, h, yOff = 0) {
+  obj.updateMatrixWorld();
+  const c = new THREE.Vector3(0, yOff, 0).applyMatrix4(obj.matrixWorld);
+  const n = new THREE.Vector3(0, 0, 1).transformDirection(obj.matrixWorld);
+  const fov = 36, aspect = innerWidth / innerHeight;
+  const dh = (h / 2) / Math.tan(fov * Math.PI / 360), dw = (w / 2) / (Math.tan(fov * Math.PI / 360) * aspect);
+  const panel = innerWidth > 700 ? 1.25 : 1.05;
+  const d = Math.max(dh, dw) * 1.15 * panel;
+  return { pos: c.clone().addScaledVector(n, d), look: c, fov };
+}
+function computeViews() {
+  views.main = fitMain();
+  views.shelf = frontOf(shelf, 4.2, 5, 2.3);
+  views.board = frontOf(board, BOARD_W + .4, BOARD_H + .4, 0);
+}
+function goView(v, instant) {
+  view = v; const t = views[v];
+  const cur = { pos: camera.position.clone(), look: camAnim.to ? camAnim.to.look.clone() : t.look.clone(), fov: camera.fov };
+  if (instant) { camera.position.copy(t.pos); camera.lookAt(t.look); camera.fov = t.fov; camera.updateProjectionMatrix(); camAnim.to = t; camAnim.t = 1; }
+  else { camAnim.from = cur; camAnim.to = t; camAnim.t = 0; camAnim.t0 = performance.now(); }
+  document.getElementById('back').style.display = v === 'main' ? 'none' : 'block';
+  document.getElementById('hint').style.display = v === 'main' ? '' : 'none';
+  if (v !== 'main') closePanel(true);
+}
+const ease = t => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+
+function placeTruck() {
+  if (isPortrait()) { truck.position.set(-0.2, 0, 6.4); truck.rotation.y = -Math.PI / 2; truck.scale.setScalar(.62); truck.userData.roof.visible = false; }
+  else { truck.position.set(7.7, 0, -0.2); truck.rotation.y = 0.6; truck.scale.setScalar(.8); truck.userData.roof.visible = true; }
+  truck.updateMatrixWorld(true); placeDropZone();
+}
+function resize() {
+  placeTruck();
+  renderer.setSize(innerWidth, innerHeight);
+  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+  computeViews(); goView(view, true);
+  layoutBoxes(true);
+}
+
+/* =========================================================
+   CAJAS EN EL PISO
+   ========================================================= */
+const boxes = new Map(); // id -> group
+const labelsEl = document.getElementById('labels');
+const labels = new Map(); // id -> {el, ...}
+let posMem = {};
+try { posMem = JSON.parse(localStorage.getItem('carey_pos') || '{}'); } catch (e) {}
+const pk = id => id + (isPortrait() ? '@p' : '@l');
+const savePos = () => { try { localStorage.setItem('carey_pos', JSON.stringify(posMem)); } catch (e) {} };
+
+function slots() {
+  const portrait = isPortrait();
+  const cols = portrait ? 4 : 7, x0 = portrait ? -3.3 : -6.6, z0 = portrait ? -2.9 : -3.0, s = 1.75;
+  const sz = portrait ? 2.2 : s;
+  const out = []; for (let r = 0; r < 8; r++) for (let c = 0; c < cols; c++) out.push([x0 + c * s, z0 + r * sz]);
+  return out;
+}
+function layoutBoxes(force) {
+  const taken = []; const sl = slots();
+  const free = () => sl.find(([x, z]) => !taken.some(([a, b]) => Math.hypot(a - x, b - z) < 1.4)) || [Math.random() * 6 - 3, Math.random() * 4];
+  const list = [...boxes.values()].sort((a, b) => (a.userData.order || 0) - (b.userData.order || 0));
+  list.forEach(g => { const m = posMem[pk(g.userData.id)]; if (m) taken.push(m); });
+  list.forEach(g => {
+    const id = g.userData.id; let pos = posMem[pk(id)];
+    if (!pos) { pos = free(); taken.push(pos); }
+    if (force || !g.userData.placed) { g.position.x = pos[0]; g.position.z = pos[1]; g.userData.placed = true; }
+  });
+}
+
+function syncBoxes(animateNew) {
+  const activos = state.pedidos.filter(p => !p.entregado);
+  const ids = new Set(activos.map(p => p.id));
+  for (const [id, g] of boxes) if (!ids.has(id) && !g.userData.leaving) { scene.remove(g); boxes.delete(id); removeLabel(id); }
+  activos.forEach((p, i) => {
+    let g = boxes.get(p.id);
+    if (!g) {
+      g = buildBox(p); fillBox(g, p); boxes.set(p.id, g); scene.add(g);
+      g.userData.order = p.ingreso || i;
+      const closed = estado(p) === 'grabado';
+      g.userData.open = g.userData.target = closed ? 0 : 1;
+      if (animateNew) { g.position.y = 6; g.userData.fall = true; }
+    } else if (g.userData.sig !== sigOf(p)) fillBox(g, p);
+    g.userData.pedido = p;
+    const closed = estado(p) === 'grabado';
+    if (!g.userData.peek) g.userData.target = closed ? 0 : 1;
+    g.userData.outline.visible = closed;
+    setFlapAngles(g);
+  });
+  layoutBoxes(false);
+  updateLabels();
+  rebuildBoard();
+  updateCounts();
+  updateShelfLabels();
+}
+
+/* ---------- etiquetas HTML ---------- */
+function removeLabel(id) { const l = labels.get(id); if (l) { l.el.remove(); labels.delete(id); } }
+function updateLabels() {
+  const now = Date.now() + (state.offset || 0);
+  for (const [id, g] of boxes) {
+    const p = g.userData.pedido; if (!p) continue;
+    let l = labels.get(id);
+    if (!l) { const el = document.createElement('div'); el.className = 'lbl'; labelsEl.appendChild(el); l = { el }; labels.set(id, l); }
+    const f = flags(p, now);
+    const tot = items(p).reduce((a, b) => a + b.cant, 0);
+    const html = `<div class="row">${f.nuevo ? '<span class="tag">NUEVO</span>' : ''}${f.trabado ? '<span class="warn strong" title="Hace más de 48 h que no se mueve">!</span>' : ''}${f.sinDiseno && !f.trabado ? '<span class="warn soft" title="Falta cargar el diseño">!</span>' : ''}${f.sinDiseno && f.trabado ? '<span class="warn soft" title="Falta cargar el diseño">!</span>' : ''}${tot > 1 ? `<span class="qty">x${tot}</span>` : ''}</div><span class="name">${esc(p.nombre || 'Sin nombre')}</span>`;
+    if (l.html !== html) { l.el.innerHTML = html; l.html = html; }
+  }
+}
+const _v = new THREE.Vector3();
+function placeLabels() {
+  const show = view === 'main';
+  for (const [id, l] of labels) {
+    const g = boxes.get(id);
+    if (!g || !show || g.userData.leaving) { l.el.style.display = 'none'; continue; }
+    _v.set(g.position.x, g.position.y + BH + 1.15 * (g.userData.open > .5 ? 1 : .35) + .1, g.position.z).project(camera);
+    l.el.style.display = '';
+    l.el.style.transform = `translate(-50%,-100%) translate(${(_v.x * .5 + .5) * innerWidth}px, ${(-_v.y * .5 + .5) * innerHeight}px)`;
+  }
+  placeShelfLabels();
+}
+
+/* ---------- etiquetas de stock ---------- */
+const shelfLabels = {};
+function updateShelfLabels() {
+  Object.keys(shelfSlots).forEach(k => {
+    let el = shelfLabels[k];
+    if (!el) { el = document.createElement('div'); el.className = 'slbl'; labelsEl.appendChild(el); shelfLabels[k] = el; }
+    const s = state.stock.find(x => x.clave === k);
+    const n = s && s.cantidad !== null && s.cantidad !== undefined && !isNaN(s.cantidad) ? s.cantidad : null;
+    el.textContent = n === null ? 'sin contar' : 'x' + n;
+    el.className = 'slbl' + (n === null ? ' none' : (s.minimo !== null && n <= s.minimo) ? ' low' : '');
+  });
+}
+function placeShelfLabels() {
+  const show = view === 'shelf' || (view === 'main' && !isPortrait());
+  Object.entries(shelfSlots).forEach(([k, s]) => {
+    const el = shelfLabels[k]; if (!el) return;
+    if (!show) { el.style.display = 'none'; return; }
+    _v.copy(s.top).applyMatrix4(shelf.matrixWorld).project(camera);
+    el.style.display = view === 'main' ? 'none' : '';
+    el.style.left = (_v.x * .5 + .5) * innerWidth + 'px'; el.style.top = (-_v.y * .5 + .5) * innerHeight + 'px';
+  });
+}
+
+function updateCounts() {
+  const act = state.pedidos.filter(p => !p.entregado);
+  const now = Date.now() + (state.offset || 0);
+  const porGrabar = act.filter(p => !p.grabado).length, listas = act.filter(p => p.grabado).length;
+  const trab = act.filter(p => flags(p, now).trabado).length, sinD = act.filter(p => flags(p, now).sinDiseno).length;
+  document.getElementById('counts').innerHTML =
+    `<span class="chip">Por grabar <b>${porGrabar}</b></span><span class="chip">Listas <b>${listas}</b></span>` +
+    (trab ? `<span class="chip" style="color:var(--bad)">Trabadas <b>${trab}</b></span>` : '') +
+    (sinD ? `<span class="chip" style="color:#8a5a00">Sin diseño <b>${sinD}</b></span>` : '');
+}
+
+/* =========================================================
+   INTERACCIÓN
+   ========================================================= */
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+const floorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+let down = null, drag = null;
+const dropEl = document.getElementById('drop');
+
+function setNdc(e) { ndc.set(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1); ray.setFromCamera(ndc, camera); }
+function pick(e) {
+  setNdc(e);
+  const objs = [...boxes.values(), shelf, board];
+  const hit = ray.intersectObjects(objs, true)[0];
+  if (!hit) return null;
+  const u = hit.object.userData;
+  if (u.box) return { type: 'box', g: u.box };
+  if (u.pinned) return { type: 'pin', id: u.pinned };
+  if (u.shelfItem) return { type: 'shelfItem', k: u.shelfItem };
+  if (u.shelf) return { type: 'shelf' };
+  if (u.board) return { type: 'board' };
+  return null;
+}
+
+renderer.domElement.addEventListener('pointerdown', e => {
+  if (camAnim.t < 1) return;
+  const h = pick(e); down = { x: e.clientX, y: e.clientY, h };
+  renderer.domElement.setPointerCapture(e.pointerId);
+});
+renderer.domElement.addEventListener('pointermove', e => {
+  if (!down) { const h = camAnim.t >= 1 ? pick(e) : null; renderer.domElement.style.cursor = h ? (h.type === 'box' && view === 'main' ? 'grab' : 'pointer') : 'default'; return; }
+  if (!drag && down.h && down.h.type === 'box' && view === 'main' && Math.hypot(e.clientX - down.x, e.clientY - down.y) > 6) {
+    const g = down.h.g; drag = { g, start: g.position.clone() }; g.userData.liftT = 1; renderer.domElement.style.cursor = 'grabbing';
+  }
+  if (drag) {
+    setNdc(e); const p = new THREE.Vector3();
+    if (ray.ray.intersectPlane(floorPlane, p)) {
+      drag.g.position.x = THREE.MathUtils.clamp(p.x, -11, 11); drag.g.position.z = THREE.MathUtils.clamp(p.z, -5, 7);
+      const hot = inTruckZone(drag.g.position.x, drag.g.position.z);
+      const closed = estado(drag.g.userData.pedido) === 'grabado';
+      dropZone.material.opacity = hot ? (closed ? .28 : 0) : (closed ? .1 : 0);
+      dropZone.material.color.set(closed ? '#43d17a' : '#d9412b');
+      dropEl.style.display = hot ? 'block' : 'none';
+      dropEl.textContent = closed ? 'Soltá para entregar' : 'Primero hay que grabarla';
+      dropEl.style.background = closed ? 'var(--ok)' : 'var(--bad)';
+      dropEl.style.left = e.clientX + 'px'; dropEl.style.top = (e.clientY - 30) + 'px';
+    }
+  }
+});
+renderer.domElement.addEventListener('pointerup', e => {
+  const d = down; down = null; dropEl.style.display = 'none'; dropZone.material.opacity = 0;
+  if (drag) { const g = drag.g, start = drag.start; drag = null; g.userData.liftT = 0; endDrag(g, start); return; }
+  if (!d || !d.h || Math.hypot(e.clientX - d.x, e.clientY - d.y) > 6) { if (d && !d.h && view === 'main') closePanel(); return; }
+  const h = d.h;
+  if (view === 'main') {
+    if (h.type === 'box') openOrder(h.g.userData.id);
+    else if (h.type === 'shelf' || h.type === 'shelfItem') goView('shelf');
+    else if (h.type === 'board' || h.type === 'pin') goView('board');
+  } else if (view === 'shelf') {
+    if (h.type === 'shelfItem') openProduct(h.k);
+  } else if (view === 'board') {
+    if (h.type === 'pin') openDelivered(h.id);
+  }
+});
+renderer.domElement.addEventListener('pointercancel', () => { down = null; if (drag) { drag.g.userData.liftT = 0; drag.g.position.copy(drag.start); drag = null; } });
+
+function endDrag(g, start) {
+  const p = g.userData.pedido;
+  if (inTruckZone(g.position.x, g.position.z)) {
+    if (estado(p) !== 'grabado') { toast('Esa caja todavía no está grabada'); g.position.copy(start); return; }
+    confirmBox('¿Entregado?', `Se marca el pedido de ${p.nombre} como entregado en la planilla.`, 'Entregado').then(ok => {
+      if (!ok) { g.position.copy(start); return; }
+      deliver(g, start);
+    });
+    return;
+  }
+  posMem[pk(g.userData.id)] = [g.position.x, g.position.z]; savePos();
+}
+
+function deliver(g, start) {
+  const p = g.userData.pedido, id = p.id;
+  g.userData.leaving = { t: 0, from: g.position.clone(), to: new THREE.Vector3(1.6, 1.15, 0).applyMatrix4(truck.matrixWorld) };
+  closePanel(true);
+  const prev = { ...p };
+  applyLocal({ ...p, entregado: true, grabado: true, fEntregado: Date.now() });
+  call('flag', { id, field: 'entregado', value: true }).then(r => { applyLocal(r.pedido); })
+    .catch(err => { applyLocal(prev); g.userData.leaving = null; g.position.copy(start); g.scale.setScalar(1); toast('No se pudo guardar: ' + err.message); });
+  toast(`Entregado: ${p.nombre}`, 'Deshacer', () => {
+    delete posMem[id + '@p']; delete posMem[id + '@l']; savePos();
+    applyLocal({ ...prev }); call('flag', { id, field: 'entregado', value: false }).then(r => applyLocal(r.pedido)).catch(err => toast('No se pudo deshacer: ' + err.message));
+  });
+}
+
+function applyLocal(p) {
+  const i = state.pedidos.findIndex(x => x.id === p.id);
+  if (i >= 0) state.pedidos[i] = p; else state.pedidos.push(p);
+  const g = boxes.get(p.id);
+  if (g && !p.entregado) { g.userData.leaving = null; g.scale.setScalar(1); }
+  syncBoxes(false);
+  if (panelCtx && panelCtx.id === p.id) panelCtx.render();
+}
+
+/* =========================================================
+   PANEL
+   ========================================================= */
+const panel = document.getElementById('panel'), pbody = document.getElementById('pbody'), ptitle = document.getElementById('ptitle');
+let panelCtx = null;
+function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+function fmt(ms) { return ms ? new Date(ms).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'; }
+function waLink(n) { const d = String(n || '').replace(/\D/g, ''); if (!d) return ''; const full = d.startsWith('54') ? d : '549' + d.replace(/^0/, ''); return `https://wa.me/${full}`; }
+
+function closePanel(silent) {
+  panel.classList.remove('open');
+  if (panelCtx && panelCtx.onClose) panelCtx.onClose();
+  panelCtx = null;
+}
+document.getElementById('pclose').onclick = () => closePanel();
+
+function openOrder(id) {
+  const g = boxes.get(id);
+  if (panelCtx && panelCtx.onClose) panelCtx.onClose();
+  if (g) { g.userData.peek = true; g.userData.target = 1; }
+  panelCtx = { id, onClose: () => { if (g) { g.userData.peek = false; g.userData.target = estado(g.userData.pedido) === 'grabado' ? 0 : 1; } }, render: () => renderOrder(id) };
+  renderOrder(id); panel.classList.add('open');
+}
+
+function paramsHtml(p) {
+  const ks = [...new Set(items(p).map(i => i.clave))];
+  const rows = [];
+  ks.forEach(k => state.parametros.filter(r => PARAM_CLAVES[k] && PARAM_CLAVES[k].test(r['Producto'] || '')).forEach(r => rows.push(r)));
+  if (!rows.length) return '<p class="muted">No hay parámetros cargados para este producto en la planilla de parámetros.</p>';
+  const v = (r, k) => r[k] ? esc(r[k]) : '—';
+  return rows.map(r => `<div class="params"><div class="pt">${esc(r['Producto'])}</div>
+    Potencia <b>${v(r, 'Potencia (%)')}</b> · Velocidad <b>${v(r, 'Velocidad (mm/min)')}</b> · Pasadas <b>${v(r, 'Pasadas')}</b> · Líneas/mm <b>${v(r, 'Líneas/mm')}</b><br>
+    Modo <b>${v(r, 'Modo láser')}</b> · Rotativo <b>${v(r, 'Rotativo')}</b>${r['Config rotativo ($100 / $101 / $121)'] ? ` · <b>${esc(r['Config rotativo ($100 / $101 / $121)'])}</b>` : ''}<br>
+    ${r['Enfoque'] ? `Enfoque: ${esc(r['Enfoque'])}<br>` : ''}<span class="pn">${esc(r['Estado'] || '')}${r['Notas'] ? ' · ' + esc(r['Notas']) : ''}</span></div>`).join('');
+}
+
+function renderOrder(id) {
+  const p = state.pedidos.find(x => x.id === id); if (!p) { closePanel(); return; }
+  const st = estado(p), f = flags(p, Date.now() + (state.offset || 0));
+  ptitle.textContent = p.nombre || 'Sin nombre';
+  const its = items(p);
+  const prodTxt = its.map(i => `${i.cant > 1 ? i.cant + ' × ' : ''}${PRODUCTOS[i.clave].nombre}`).join(' + ');
+  const wa = waLink(p.whatsapp);
+  const stLbl = { abierta: 'Falta grabar', grabado: 'Grabado · listo para entregar', entregado: 'Entregado' }[st];
+  pbody.innerHTML = `
+    <span class="state s-${st}">${stLbl}</span>
+    ${f.trabado ? `<p style="color:var(--bad);margin:0 0 10px;font-size:13px"><b>!</b> Hace más de 48 h que este pedido no avanza.</p>` : ''}
+    <dl>
+      <dt>Producto</dt><dd>${esc(prodTxt)}${prodTxt.toLowerCase().includes(String(p.producto).toLowerCase().trim()) ? '' : `<br><span class="muted">En la planilla: “${esc(p.producto)}”</span>`}</dd>
+      <dt>Cantidad</dt><dd>${esc(p.cantidad || its.reduce((a, b) => a + b.cant, 0))}</dd>
+      <dt>Diseño (idea)</dt><dd>${esc(p.idea || '—')}</dd>
+      <dt>Color</dt><dd><select class="i" id="fColor" style="padding:5px 8px">${['', ...Object.keys(COLORES).filter(k => !['verde militar', 'marron'].includes(k))].map(k => `<option value="${k}" ${String(p.color).toLowerCase() === k ? 'selected' : ''}>${k || '— de fábrica —'}</option>`).join('')}${p.color && !COLORES[String(p.color).toLowerCase()] ? `<option selected>${esc(p.color)}</option>` : ''}</select></dd>
+      <dt>Envío</dt><dd>${esc(p.envio || '—')}</dd>
+      <dt>WhatsApp</dt><dd>${wa ? `<a href="${wa}" target="_blank" rel="noopener">${esc(p.whatsapp)}</a>` : '—'}</dd>
+      <dt>Entró</dt><dd>${fmt(p.ingreso)}</dd>
+      ${p.grabado ? `<dt>Grabado</dt><dd>${fmt(p.fGrabado)}</dd>` : ''}
+      ${p.entregado ? `<dt>Entregado</dt><dd>${fmt(p.fEntregado)}</dd>` : ''}
+      <dt>ID</dt><dd class="muted">${esc(p.id)}</dd>
+    </dl>
+    <label class="chk"><input type="checkbox" id="fPagado" ${p.pagado ? 'checked' : ''}> Pagado</label>
+    <div class="sec"><h3>Diseño aprobado</h3><div class="design" id="dz">${p.diseno ? '<p class="muted">Cargando imagen…</p>' : `<p class="muted" style="margin-top:0">${f.sinDiseno ? '<b style="color:#8a5a00">!</b> ' : ''}Todavía no hay diseño cargado.</p>`}
+      <div class="btns">${p.diseno ? '<button class="btn primary" id="dDown">Descargar para LaserGRBL</button>' : ''}${st !== 'entregado' ? `<button class="btn" id="dUp">${p.diseno ? 'Cambiar diseño' : 'Cargar diseño'}</button>` : ''}</div></div></div>
+    <div class="sec"><h3>Estado</h3><div class="btns">
+      ${st === 'abierta' ? '<button class="btn primary" id="bGrab">Marcar grabado</button>' : ''}
+      ${st === 'grabado' ? '<button class="btn" id="bUngrab">Volver a “falta grabar”</button><button class="btn primary" id="bDeliver">Marcar entregado</button>' : ''}
+      ${st === 'entregado' ? '<button class="btn" id="bUndeliver">Volver al depósito</button>' : ''}
+    </div>${st === 'grabado' ? '<p class="muted">También podés arrastrar la caja al camión.</p>' : ''}</div>
+    <div class="sec"><h3>Parámetros del láser</h3>${paramsHtml(p)}</div>`;
+  const $ = s => pbody.querySelector(s);
+  $('#fPagado').onchange = e => flag(p, 'pagado', e.target.checked);
+  $('#fColor').onchange = e => { const prev = { ...p }; applyLocal({ ...p, color: e.target.value }); call('update', { id: p.id, fields: { color: e.target.value } }).then(r => applyLocal(r.pedido)).catch(err => { applyLocal(prev); toast(err.message); }); };
+  if ($('#dUp')) $('#dUp').onclick = () => pickFile(p, 'diseno');
+  if ($('#bGrab')) $('#bGrab').onclick = () => flag(p, 'grabado', true);
+  if ($('#bUngrab')) $('#bUngrab').onclick = () => flag(p, 'grabado', false);
+  if ($('#bUndeliver')) $('#bUndeliver').onclick = () => { delete posMem[p.id + '@p']; delete posMem[p.id + '@l']; savePos(); flag(p, 'entregado', false); closePanel(); goView('main'); };
+  if ($('#bDeliver')) $('#bDeliver').onclick = () => confirmBox('¿Entregado?', `Se marca el pedido de ${p.nombre} como entregado en la planilla.`, 'Entregado').then(ok => { if (ok) { const g = boxes.get(p.id); deliver(g, g.position.clone()); } });
+  if (p.diseno) loadDesign(p, $('#dz'), $('#dDown'));
+}
+
+function flag(p, field, value) {
+  const prev = { ...p }; const np = { ...p, [field]: value };
+  if (field === 'grabado') np.fGrabado = value ? Date.now() : null;
+  if (field === 'entregado') np.fEntregado = value ? Date.now() : null;
+  applyLocal(np);
+  if (field === 'grabado' && value) toast(`Grabado: ${p.nombre}. La caja se cerró.`);
+  call('flag', { id: p.id, field, value }).then(r => applyLocal(r.pedido)).catch(err => { applyLocal(prev); toast('No se pudo guardar: ' + err.message); });
+}
+
+const fileCache = {};
+async function getFile(fileId) {
+  if (fileCache[fileId]) return fileCache[fileId];
+  if (DEMO && fileId === 'demo') return (fileCache[fileId] = demoDesign());
+  const r = await call('file', { fileId });
+  const bin = atob(r.data); const u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+  const blob = new Blob([u], { type: r.mime });
+  return (fileCache[fileId] = { name: r.name, mime: r.mime, url: URL.createObjectURL(blob) });
+}
+function demoDesign() {
+  const cv = document.createElement('canvas'); cv.width = cv.height = 600; const c = cv.getContext('2d');
+  c.fillStyle = '#fff'; c.fillRect(0, 0, 600, 600); c.fillStyle = '#000'; c.font = '700 120px MuseoModerno, sans-serif'; c.textAlign = 'center'; c.fillText('CAREY', 300, 330);
+  c.lineWidth = 14; c.strokeRect(60, 140, 480, 280);
+  return { name: 'diseno-demo.png', mime: 'image/png', url: cv.toDataURL() };
+}
+async function loadDesign(p, el, btn) {
+  try {
+    const f = await getFile(p.diseno);
+    if (!el.isConnected) return;
+    const isImg = /^image\//.test(f.mime);
+    el.insertAdjacentHTML('afterbegin', isImg ? `<img src="${f.url}" alt="Diseño">` : `<p>${esc(f.name)}</p>`);
+    el.querySelector('p.muted')?.remove();
+    if (btn) btn.onclick = () => { const a = document.createElement('a'); a.href = f.url; a.download = f.name || 'diseno'; document.body.appendChild(a); a.click(); a.remove(); };
+  } catch (err) { if (el.isConnected) el.querySelector('p.muted').textContent = 'No se pudo cargar el diseño: ' + err.message; }
+}
+
+const fileInput = document.getElementById('fileInput');
+function pickFile(p, kind) {
+  fileInput.value = ''; fileInput.accept = kind === 'foto' ? 'image/*' : 'image/*,.svg,.pdf';
+  fileInput.onchange = async () => {
+    const file = fileInput.files[0]; if (!file) return;
+    if (file.size > 20e6) { toast('El archivo pesa más de 20 MB'); return; }
+    toast('Subiendo ' + file.name + '…');
+    const data = await new Promise(res => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1]); r.readAsDataURL(file); });
+    try {
+      const r = await call('upload', { id: p.id, kind, name: file.name, mime: file.type || 'application/octet-stream', data });
+      const fid = r.pedido[kind];
+      fileCache[fid] = { name: file.name, mime: file.type, url: URL.createObjectURL(file) };
+      applyLocal(r.pedido); toast(kind === 'foto' ? 'Foto cargada' : 'Diseño cargado');
+    } catch (err) { toast('No se pudo subir: ' + err.message); }
+  };
+  fileInput.click();
+}
+
+/* ---------- estantería: producto ---------- */
+function openProduct(k) {
+  if (panelCtx && panelCtx.onClose) panelCtx.onClose();
+  panelCtx = { k, render: () => openProduct(k) };
+  const s = state.stock.find(x => x.clave === k) || { cantidad: null, minimo: null };
+  ptitle.textContent = PRODUCTOS[k].nombre;
+  const n = s.cantidad === null || s.cantidad === undefined || isNaN(s.cantidad) ? null : s.cantidad;
+  pbody.innerHTML = `
+    <div class="sec" style="border:0;margin:0;padding:0"><h3>Stock</h3>
+      <div class="stockbox"><button class="btn" id="sm">−</button><span class="n" id="sn">${n === null ? '—' : n}</span><button class="btn" id="sp">+</button></div>
+      <p class="muted">${n === null ? 'Todavía sin contar. Tocá + para empezar.' : s.minimo !== null ? `Mínimo: ${s.minimo}` : ''} Se descuenta solo cuando entra un pedido.</p></div>
+    <div class="sec"><h3>Nuevo pedido</h3>
+      <label class="f">Nombre del cliente *</label><input class="i" id="oN" autocomplete="off">
+      <label class="f">WhatsApp</label><input class="i" id="oW" inputmode="tel" autocomplete="off">
+      <div style="display:flex;gap:10px"><div style="flex:1"><label class="f">Cantidad</label><input class="i" id="oC" type="number" min="1" value="1"></div>
+      <div style="flex:1"><label class="f">Color</label><select class="i" id="oK"><option value="">De fábrica</option>${Object.keys(COLORES).filter(c => !['verde militar', 'marron'].includes(c)).map(c => `<option>${c}</option>`).join('')}</select></div></div>
+      <label class="f">Idea de diseño</label><textarea class="i" id="oI"></textarea>
+      <label class="f">Entrega</label><select class="i" id="oE"><option>Retira</option><option>Envío</option></select>
+      <label class="chk"><input type="checkbox" id="oP"> Pagado</label>
+      <button class="btn primary" id="oGo" style="width:100%">Grabar</button>
+      <p class="muted">Se anota en la planilla y aparece una caja abierta en el depósito.</p></div>`;
+  const $ = q => pbody.querySelector(q);
+  const setStock = v => { const prev = state.stock.map(x => ({ ...x })); const it = state.stock.find(x => x.clave === k); if (it) it.cantidad = v; else state.stock.push({ clave: k, producto: PRODUCTOS[k].nombre, cantidad: v, minimo: null }); updateShelfLabels(); $('#sn').textContent = v;
+    clearTimeout(setStock.t); setStock.t = setTimeout(() => call('stock', { clave: k, cantidad: v }).then(r => { state.stock = r.stock; updateShelfLabels(); }).catch(err => { state.stock = prev; updateShelfLabels(); toast(err.message); }), 600); };
+  $('#sm').onclick = () => { const it = state.stock.find(x => x.clave === k); const c = it && it.cantidad != null ? it.cantidad : 0; setStock(Math.max(0, c - 1)); };
+  $('#sp').onclick = () => { const it = state.stock.find(x => x.clave === k); const c = it && it.cantidad != null ? it.cantidad : 0; setStock(c + 1); };
+  $('#oGo').onclick = async () => {
+    const nombre = $('#oN').value.trim(); if (!nombre) { $('#oN').focus(); toast('Falta el nombre'); return; }
+    const order = { producto: PRODUCTOS[k].nombre, cantidad: Math.max(1, parseInt($('#oC').value, 10) || 1), nombre, whatsapp: $('#oW').value.trim(), color: $('#oK').value, idea: $('#oI').value.trim(), envio: $('#oE').value, pagado: $('#oP').checked };
+    const ok = await confirmBox('¿Grabar?', `${order.cantidad} × ${PRODUCTOS[k].nombre} para ${nombre}.`, 'Grabar'); if (!ok) return;
+    $('#oGo').disabled = true;
+    try {
+      const r = await call('create', { order });
+      if (r.stock) state.stock = r.stock; else { const it = state.stock.find(x => x.clave === k); if (it && it.cantidad != null) it.cantidad -= order.cantidad; }
+      state.pedidos.push(r.pedido);
+      closePanel(); goView('main');
+      setTimeout(() => { syncBoxes(true); toast(`Caja nueva: ${nombre}`); }, 500);
+    } catch (err) { $('#oGo').disabled = false; toast('No se pudo crear: ' + err.message); }
+  };
+  panel.classList.add('open');
+}
+
+/* ---------- corcho: pedido entregado ---------- */
+function openDelivered(id) {
+  const p = state.pedidos.find(x => x.id === id); if (!p) return;
+  if (panelCtx && panelCtx.onClose) panelCtx.onClose();
+  panelCtx = { id, render: () => openDelivered(id) };
+  ptitle.textContent = p.nombre;
+  const its = items(p);
+  pbody.innerHTML = `<span class="state s-entregado">Entregado ${p.fEntregado ? new Date(p.fEntregado).toLocaleDateString('es-AR') : ''}</span>
+    <div class="design" id="ph" style="margin-bottom:12px">${p.foto ? '<p class="muted">Cargando foto…</p>' : ''}<div class="btns"><button class="btn" id="fUp">${p.foto ? 'Cambiar foto' : 'Subir foto real'}</button></div></div>
+    <dl><dt>Producto</dt><dd>${esc(its.map(i => (i.cant > 1 ? i.cant + ' × ' : '') + PRODUCTOS[i.clave].nombre).join(' + '))}</dd>
+    <dt>Cantidad</dt><dd>${esc(p.cantidad || '1')}</dd><dt>Diseño</dt><dd>${esc(p.idea || '—')}</dd><dt>Envío</dt><dd>${esc(p.envio || '—')}</dd>
+    <dt>WhatsApp</dt><dd>${waLink(p.whatsapp) ? `<a href="${waLink(p.whatsapp)}" target="_blank" rel="noopener">${esc(p.whatsapp)}</a>` : '—'}</dd><dt>Pagado</dt><dd>${p.pagado ? 'Sí' : 'No'}</dd></dl>
+    <div class="sec" id="dsec"><h3>Diseño grabado</h3><div class="design" id="dz">${p.diseno ? '<p class="muted">Cargando…</p><div class="btns"><button class="btn" id="dDown">Descargar</button></div>' : '<p class="muted" style="margin:0">No se cargó diseño.</p>'}</div></div>
+    <div class="sec"><button class="btn" id="bUndeliver">Volver al depósito (no se entregó)</button></div>`;
+  const $ = q => pbody.querySelector(q);
+  $('#fUp').onclick = () => pickFile(p, 'foto');
+  $('#bUndeliver').onclick = () => { flag(p, 'entregado', false); closePanel(); goView('main'); };
+  if (p.diseno) loadDesign(p, $('#dz'), $('#dDown'));
+  if (p.foto) getFile(p.foto).then(f => { const el = $('#ph'); if (!el) return; el.querySelector('p.muted')?.remove(); el.insertAdjacentHTML('afterbegin', `<img src="${f.url}" alt="Foto">`); }).catch(() => {});
+  panel.classList.add('open');
+}
+
+/* =========================================================
+   TOAST / CONFIRM / PIN
+   ========================================================= */
+const toastEl = document.getElementById('toast');
+let toastT;
+function toast(msg, btn, fn) {
+  document.getElementById('tmsg').textContent = msg;
+  const b = document.getElementById('tbtn'); b.style.display = btn ? '' : 'none'; b.textContent = btn || '';
+  b.onclick = () => { toastEl.style.display = 'none'; fn && fn(); };
+  toastEl.style.display = 'flex'; clearTimeout(toastT); toastT = setTimeout(() => toastEl.style.display = 'none', btn ? 7000 : 3200);
+}
+function confirmBox(title, text, yes = 'Sí') {
+  const m = document.getElementById('confirm');
+  document.getElementById('ctitle').textContent = title; document.getElementById('ctext').textContent = text; document.getElementById('cyes').textContent = yes;
+  m.classList.add('open');
+  return new Promise(res => {
+    document.getElementById('cyes').onclick = () => { m.classList.remove('open'); res(true); };
+    document.getElementById('cno').onclick = () => { m.classList.remove('open'); res(false); };
+  });
+}
+function askPin(msg) {
+  const m = document.getElementById('pinModal'); m.classList.add('open');
+  document.getElementById('pinErr').textContent = msg || '';
+  const inp = document.getElementById('pinInput'); setTimeout(() => inp.focus(), 50);
+  return new Promise(res => {
+    const go = () => { PIN = inp.value.trim(); try { localStorage.setItem('carey_pin', PIN); } catch (e) {} m.classList.remove('open'); res(); };
+    document.getElementById('pinOk').onclick = go; inp.onkeydown = e => { if (e.key === 'Enter') go(); };
+  });
+}
+
+/* =========================================================
+   CARGA Y LOOP
+   ========================================================= */
+let loading = false, lastOk = 0;
+async function load(first) {
+  if (loading) return; loading = true;
+  try {
+    if (!DEMO && !PIN) await askPin();
+    const r = await call('data');
+    state = { ...state, pedidos: r.pedidos, stock: r.stock || [], parametros: r.parametros || [], offset: (r.ahora || Date.now()) - Date.now() };
+    lastOk = Date.now();
+    syncBoxes(!first);
+    if (panelCtx && panelCtx.render && panelCtx.id) panelCtx.render();
+  } catch (err) {
+    if (/PIN/.test(err.message)) { loading = false; await askPin(err.message); return load(first); }
+    toast('No se pudo leer la planilla: ' + err.message);
+  } finally { loading = false; updateSync(); }
+}
+function updateSync() {
+  document.getElementById('sync').textContent = DEMO ? 'Datos de ejemplo' : lastOk ? 'Actualizado ' + new Date(lastOk).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }) : 'Sin conexión';
+}
+document.getElementById('refresh').onclick = () => load(false);
+document.getElementById('goShelf').onclick = () => goView(view === 'shelf' ? 'main' : 'shelf');
+document.getElementById('goBoard').onclick = () => goView(view === 'board' ? 'main' : 'board');
+document.getElementById('back').onclick = () => { closePanel(); goView('main'); };
+addEventListener('keydown', e => { if (e.key === 'Escape') { if (panel.classList.contains('open')) closePanel(); else if (view !== 'main') goView('main'); } });
+setInterval(() => { if (!document.hidden && !drag) load(false); }, POLL_MS);
+setInterval(() => { updateLabels(); updateCounts(); }, 60000);
+
+const clock = new THREE.Clock();
+function tick() {
+  const dt = Math.min(clock.getDelta(), .05), t = clock.elapsedTime;
+  if (camAnim.t < 1 && camAnim.from) {
+    camAnim.t = Math.min(1, (performance.now() - camAnim.t0) / 750); const k = ease(camAnim.t);
+    camera.position.lerpVectors(camAnim.from.pos, camAnim.to.pos, k);
+    const look = new THREE.Vector3().lerpVectors(camAnim.from.look, camAnim.to.look, k); camera.lookAt(look);
+    camera.fov = THREE.MathUtils.lerp(camAnim.from.fov, camAnim.to.fov, k); camera.updateProjectionMatrix();
+  }
+  for (const [id, g] of boxes) {
+    const u = g.userData;
+    if (u.open !== u.target) { u.open += Math.sign(u.target - u.open) * Math.min(Math.abs(u.target - u.open), dt * 2.6); setFlapAngles(g); }
+    u.lift += (u.liftT - u.lift) * Math.min(1, dt * 12);
+    if (u.fall) { g.position.y = Math.max(0, g.position.y - dt * 14); if (g.position.y === 0) u.fall = false; }
+    else if (!u.leaving) g.position.y = u.lift * .35;
+    if (u.outline.visible) u.outline.material.opacity = .35 + .2 * Math.sin(t * 3);
+    if (u.leaving) {
+      u.leaving.t = Math.min(1, u.leaving.t + dt / .9); const k = ease(u.leaving.t);
+      g.position.lerpVectors(u.leaving.from, u.leaving.to, k); g.position.y += Math.sin(k * Math.PI) * 1.2;
+      g.scale.setScalar(1 - k * .55);
+      if (u.leaving.t >= 1) { scene.remove(g); boxes.delete(id); removeLabel(id); delete posMem[id + '@p']; delete posMem[id + '@l']; savePos(); }
+    }
+  }
+  outlineM.opacity = .35 + .2 * Math.sin(t * 3);
+  renderer.render(scene, camera);
+  placeLabels();
+  requestAnimationFrame(tick);
+}
+
+addEventListener('resize', resize);
+if (DEMO) document.getElementById('demo').style.display = 'block';
+scene.updateMatrixWorld(true);
+resize();
+await load(true);
+document.getElementById('loading').style.opacity = 0; setTimeout(() => document.getElementById('loading').remove(), 450);
+tick();
+window.__dbg = { state, boxes, goView, camera, scene, openOrder, openProduct, openDelivered };
+</script>
+</body>
+</html>
