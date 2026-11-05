@@ -39,6 +39,27 @@ button{font:inherit;cursor:pointer}
 .tabs button b{font:700 11px/1 var(--t);background:rgba(0,0,0,.08);padding:3px 6px;border-radius:99px}
 .tabs button b:empty{display:none}
 .tabs button.on b{background:rgba(255,255,255,.2)}
+#pv{position:fixed;inset:0;z-index:4;background:var(--bg);overflow:auto;padding:104px 16px 96px;display:none}
+#pv.open{display:block}
+#pv .wrap{max-width:1100px;margin:0 auto}
+#pv h1{font:700 20px var(--t);margin:8px 0 4px;color:var(--pine)}
+#pv .sub{color:var(--muted);font-size:13px;margin:0 0 14px}
+#pnote{margin-bottom:12px}
+#pnote p{background:#fff4dc;color:#8a5a00;border:1px solid #f0d9a0;border-radius:10px;padding:8px 10px;font-size:13px;margin:0}
+.pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px;align-items:start}
+.pcard{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px}
+.pcard .hd{display:flex;gap:8px;align-items:center;justify-content:space-between;margin-bottom:10px}
+.pcard h2{font:700 15px var(--t);margin:0}
+.pcard .hd select{width:auto;padding:5px 8px;font-size:13px}
+.pcard .sv{font-size:11px;color:var(--muted);height:14px;margin-top:6px;text-align:right}
+.pf{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.pf label{font-size:11px;color:var(--muted);display:block;margin-bottom:2px}
+.pf .w{grid-column:1/-1}
+.pf .sep{grid-column:1/-1;font:700 11px var(--t);color:var(--pine);text-transform:uppercase;letter-spacing:.05em;margin-top:6px}
+.pf input,.pf select,.pf textarea{font-size:14px;padding:7px 9px}
+.edrow input.i,.edrow textarea.i{padding:5px 8px;font-size:14px}
+.sv-ok{color:var(--ok)}
+
 #fade{position:fixed;inset:0;background:var(--bg);opacity:0;pointer-events:none;z-index:4}
 #labels{position:fixed;inset:0;pointer-events:none;z-index:3;overflow:hidden}
 .zlbl{position:absolute;left:0;top:0;display:flex;align-items:center;gap:8px;font:13px/1.2 var(--b);color:var(--charcoal);white-space:nowrap;background:rgba(255,255,255,.92);border:1px solid var(--line);border-radius:12px;padding:6px 10px 6px 6px;box-shadow:0 2px 8px rgba(0,0,0,.06);will-change:transform}
@@ -151,7 +172,8 @@ a{color:var(--pine)}
     <button class="btn" id="refresh" title="Actualizar">↻</button>
   </div>
 </div>
-<nav class="tabs"><button data-v="main" class="on">Pedidos <b id="tcPed"></b></button><button data-v="shelf">Estantería</button><button data-v="board">Corcho <b id="tcBoard"></b></button></nav>
+<nav class="tabs"><button data-v="main" class="on">Pedidos <b id="tcPed"></b></button><button data-v="shelf">Estantería</button><button data-v="board">Corcho <b id="tcBoard"></b></button><button data-v="params">Parámetros</button></nav>
+<div id="pv"><div class="wrap"><h1>Parámetros del láser</h1><p class="sub">Tocá cualquier valor para editarlo: se guarda solo en la planilla.</p><div id="pnote"></div><div class="pgrid" id="pgrid"></div></div></div>
 <div id="fade"></div>
 <div class="hint" id="hint">Pasá el mouse por una caja para ver el pedido, clic para fijarlo · Arrastrá las cajas listas al pozo · Ruedita para acercar</div>
 
@@ -207,7 +229,25 @@ const PRODUCTOS = {
 const COLOR_BASE = { matesystem: '#55593f', mediamanija: '#222222', ozz960: '#2b2b2b', ozz500: '#2b2b2b', acero: '#1d1d1d', cliente: '#9aa0a6' };
 const COLORES = { negro:'#222222', blanco:'#f2f2ee', verde:'#55593f', 'verde militar':'#55593f', lila:'#b9a3d6', violeta:'#7d5ba6', rojo:'#b83a2e',
   azul:'#2f4f7f', celeste:'#8fc1e3', rosa:'#e8a6b8', gris:'#8d9297', beige:'#d9cdb4', marron:'#6b4a33', 'marrón':'#6b4a33', naranja:'#e07b30', amarillo:'#e8c547', bordo:'#6e1f2a' };
-const PARAM_CLAVES = { imperial:/imperial/i, criollo:/calabaza|criollo/i, acero:/mate de acero/i, mediamanija:/media manija/i, matesystem:/mate system/i, ozz960:/960/, ozz500:/500/, cliente:/$^/ };
+
+const PARAM_PRODS = [
+  { k: 'ozz960', n: 'Botella OZZ 960 ml' }, { k: 'ozz500', n: 'Botella OZZ 500 ml' }, { k: 'criollo', n: 'Mate criollo (calabaza)' },
+  { k: 'imperial', n: 'Mate imperial · virola' }, { k: 'imperialcuero', n: 'Mate imperial · cuero' },
+  { k: 'matesystem', n: 'Termo Mate System' }, { k: 'mediamanija', n: 'Termo Media Manija' }
+];
+const PARAM_CAMPOS = [
+  { g: 'Láser (LaserGRBL)' },
+  { k: 'potencia', l: 'Potencia (S, %)' }, { k: 'velocidad', l: 'Velocidad (mm/min)' },
+  { k: 'modo', l: 'Modo láser', opts: ['', 'M3', 'M4'] }, { k: 'pasadas', l: 'Pasadas' },
+  { k: 'lineas', l: 'Líneas por mm' }, { k: 'rotativo', l: 'Rotativo', list: ['Sí', 'No', 'Sí, sacando la manija'] },
+  { k: 'enfoque', l: 'Enfoque / distancia', w: 1 }, { k: 'tratamiento', l: 'Tratamiento (pasta, etc.)', w: 1 },
+  { g: 'GRBL (pasos y potencia)' },
+  { k: 'g30', l: '$30 (S máx.)' }, { k: 'g100', l: '$100' }, { k: 'g101', l: '$101' }, { k: 'g121', l: '$121' },
+  { g: 'Diseño' },
+  { k: 'medida', l: 'Medida del diseño', w: 1 }, { k: 'notas', l: 'Notas', w: 1, area: 1 }
+];
+const PARAM_ESTADOS = ['Falta cargar', 'A probar', 'Probado', 'Descartado'];
+const PARAM_SEED = [{"clave": "ozz960", "producto": "Botella OZZ 960 ml", "rotativo": "Sí", "g101": "57", "g121": "500", "medida": "285 × 180 mm", "estado": "Falta cargar", "potencia": "", "velocidad": "", "modo": "", "pasadas": "", "lineas": "", "g30": "", "g100": "", "enfoque": "", "tratamiento": "", "notas": ""}, {"clave": "ozz500", "producto": "Botella OZZ 500 ml", "potencia": "75", "velocidad": "800", "rotativo": "Sí", "g30": "750", "g101": "56 o 60", "g121": "500", "enfoque": "3er escalón (distancia del termo al láser)", "medida": "230 × 155 mm (Ø 7 cm)", "estado": "Probado", "notas": "$101: decía 56 y anotaron 60. Confirmar cuál quedó.", "modo": "", "pasadas": "", "lineas": "", "g100": "", "tratamiento": ""}, {"clave": "criollo", "producto": "Mate criollo (calabaza)", "potencia": "35", "velocidad": "1500", "enfoque": "3er escalón del láser", "estado": "Probado", "notas": "Hay otra anotación (con rotativo): 30 %, 1300 mm/min, Height 34 con el candado puesto, $100=70 / $101=74. Falta elegir cuál queda.", "modo": "", "pasadas": "", "lineas": "", "rotativo": "", "g30": "", "g100": "", "g101": "", "g121": "", "tratamiento": "", "medida": ""}, {"clave": "imperial", "producto": "Mate imperial · virola", "tratamiento": "Pasta negra para marcar", "modo": "M4", "potencia": "80", "velocidad": "2000", "pasadas": "1", "lineas": "12", "rotativo": "No", "enfoque": "Sobre la superficie de la virola", "medida": "Ø ext 92 mm, Ø int 65 mm (lienzo 92 × 92 mm)", "estado": "A probar", "notas": "Grilla de prueba: 1500 / 2000 / 2500 mm/min contra 60 / 80 / 100 %. Limpiar con alcohol, capa fina de pasta, secar 15-20 min, grabar, lavar y frotar.", "g30": "", "g100": "", "g101": "", "g121": ""}, {"clave": "imperialcuero", "producto": "Mate imperial · cuero", "potencia": "40", "velocidad": "1200", "medida": "310 × 173 mm", "estado": "Probado", "notas": "Valores del \"mate de cuero\" de la tabla vieja. Revisar.", "modo": "", "pasadas": "", "lineas": "", "rotativo": "", "g30": "", "g100": "", "g101": "", "g121": "", "enfoque": "", "tratamiento": ""}, {"clave": "matesystem", "producto": "Termo Mate System", "rotativo": "No", "estado": "Falta cargar", "notas": "Sin rotativo.", "potencia": "", "velocidad": "", "modo": "", "pasadas": "", "lineas": "", "g30": "", "g100": "", "g101": "", "g121": "", "enfoque": "", "tratamiento": "", "medida": ""}, {"clave": "mediamanija", "producto": "Termo Media Manija", "rotativo": "Sí, sacando la manija", "estado": "Falta cargar", "notas": "Sacar la manija y usar el rotativo.", "potencia": "", "velocidad": "", "modo": "", "pasadas": "", "lineas": "", "g30": "", "g100": "", "g101": "", "g121": "", "enfoque": "", "tratamiento": "", "medida": ""}];
 
 /* =========================================================
    DATOS (API o demo)
@@ -247,6 +287,7 @@ function demoCall(action, b) {
     if (action === 'update') { const p = { ...find(b.id), ...b.fields }; saveDemo(p); return r({ pedido: p }); }
     if (action === 'upload') { const p = { ...find(b.id) }; const fid = 'demo_' + Math.random().toString(36).slice(2); (window.__files ||= {})[fid] = b; p[b.kind] = fid; saveDemo(p); return r({ pedido: p }); }
     if (action === 'file') { const f = (window.__files || {})[b.fileId]; return r(f ? { name: f.name, mime: f.mime, data: f.data } : { name: 'x.png', mime: 'image/png', data: '' }); }
+    if (action === 'params') { const L = window.__demo.parametros; let q = L.find(x => x.clave === b.clave); if (!q) { q = { clave: b.clave }; L.push(q); } Object.assign(q, b.fields || {}); return r({ parametros: L }); }
     if (action === 'stock') { const s = window.__demo.stock.find(s => s.clave === b.clave); if (s) s.cantidad = b.cantidad; return r({ stock: window.__demo.stock }); }
     r({});
   }, 150));
@@ -276,13 +317,7 @@ function demoData() {
       P('DEMO-15', 'Mate Imperial', '40', 'Logo de empresa', 'Envío', 'Empresa O', '', { ingreso: d(5), diseno: 'demo', pagado: true })
     ],
     stock: Object.keys(PRODUCTOS).filter(k => k !== 'cliente').map((k, i) => ({ producto: PRODUCTOS[k].nombre, clave: k, cantidad: [4, 2, 0, 3, 1, 5, 6][i], minimo: 2, notas: '' })),
-    parametros: [
-      { 'Producto': 'Mate imperial: virola', 'Potencia (%)': '80', 'Velocidad (mm/min)': '2000', 'Pasadas': '1', 'Líneas/mm': '12', 'Rotativo': 'No (cara superior)', 'Estado': 'A probar', 'Modo láser': 'M4 (Dynamic)', 'Notas': 'Pasta negra para marcar.' },
-      { 'Producto': 'Mate calabaza (opción A)', 'Potencia (%)': '35', 'Velocidad (mm/min)': '1500', 'Enfoque': '3er escalón del láser', 'Estado': 'Usado, elegir A o B' },
-      { 'Producto': 'Mate calabaza (opción B)', 'Potencia (%)': '30', 'Velocidad (mm/min)': '1300', 'Rotativo': 'Sí', 'Config rotativo ($100 / $101 / $121)': '$100=70 / $101=74 / —', 'Estado': 'Usado, elegir A o B' },
-      { 'Producto': 'Termo media manija', 'Rotativo': 'Sí, sacando la manija', 'Estado': 'Falta potencia y velocidad' },
-      { 'Producto': 'Termo OZZ 960 ml', 'Rotativo': 'Sí', 'Config rotativo ($100 / $101 / $121)': '— / $101=57 / $121=500', 'Estado': 'Falta potencia y velocidad' }
-    ]
+    parametros: PARAM_SEED.map(x => ({ ...x }))
   };
 }
 
@@ -394,19 +429,6 @@ floor.rotation.x = -Math.PI / 2; scene.add(floor);
 const wallG = new THREE.Group(); scene.add(wallG);
 {
   put(wallG, BOX(120, 14, .2), M('#f3f4ee', { roughness: 1, emissive: '#f3f4ee', emissiveIntensity: .35 }), 0, 7, -.1, { cast: false });
-  // la marca en letras negras sobre la pared
-  const logo = canvasTex(1024, 256, (c, w, h) => {
-    c.fillStyle = '#1d1f1e'; c.font = `700 170px ${FONT_T}`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('Carey', w / 2, h / 2 + 8);
-  });
-  wallG.userData.logo = logo;
-  put(wallG, new THREE.PlaneGeometry(4.0, 1.0), new THREE.MeshBasicMaterial({ map: logo, transparent: true, toneMapped: false }), 0, 2.35, .02, { cast: false });
-  // reloj mínimo con la hora real
-  const clockG = new THREE.Group(); clockG.position.set(6.2, 2.2, .1); wallG.add(clockG);
-  put(clockG, CYL(.5, .5, .06, 48), M('#f7f8f3'), 0, 0, .03, { rx: Math.PI / 2 });
-  put(clockG, TOR(.5, .025, 12, 48), M('#1d1f1e', { roughness: .4 }), 0, 0, .06, { cast: false });
-  const hand = (len, w, m) => { const p = new THREE.Group(); p.position.z = .07; put(p, RBOX(w, len, .012, w / 2 - .001), m, 0, len / 2 - .03, 0, { cast: false }); clockG.add(p); return p; };
-  wallG.userData.hh = hand(.24, .035, BLACK); wallG.userData.mh = hand(.36, .025, BLACK); wallG.userData.sh = hand(.38, .01, M('#e07a5f'));
-  put(clockG, SPH(.035), BLACK, 0, 0, .08, { cast: false });
 }
 
 /* ---------- productos (formas lisas, sin detalles chicos) ---------- */
@@ -1085,7 +1107,9 @@ function resetCam() { camCtl.zoom = 1; camCtl.pan.set(0, 0, 0); applyMainCam(); 
 function goView(v, instant) {
   const changed = v !== view;
   view = v; const t = views[v];
-  if (v === 'main') applyMainCam();
+  document.getElementById('pv').classList.toggle('open', v === 'params');
+  if (v === 'params') { document.getElementById('resetCam').style.display = 'none'; renderParams(true); }
+  else if (v === 'main') applyMainCam();
   else { camera.position.copy(t.pos); camera.lookAt(t.look); camera.fov = t.fov; camera.updateProjectionMatrix(); document.getElementById('resetCam').style.display = 'none'; }
   document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('on', b.dataset.v === v));
   document.getElementById('hint').style.display = v === 'main' ? '' : 'none';
@@ -1577,16 +1601,69 @@ function openOrder(id) {
   renderOrder(id); panel.classList.add('open');
 }
 
+function paramRec(k) { return state.parametros.find(r => r.clave === k) || {}; }
 function paramsHtml(p) {
-  const ks = [...new Set(items(p).map(i => i.clave))];
-  const rows = [];
-  ks.forEach(k => state.parametros.filter(r => PARAM_CLAVES[k] && PARAM_CLAVES[k].test(r['Producto'] || '')).forEach(r => rows.push(r)));
-  if (!rows.length) return '<p class="muted">No hay parámetros cargados para este producto en la planilla de parámetros.</p>';
+  const keys = [];
+  items(p).forEach(i => { const ks = i.clave === 'imperial' ? ['imperial', 'imperialcuero'] : [i.clave]; ks.forEach(k => { if (PARAM_PRODS.some(x => x.k === k) && !keys.includes(k)) keys.push(k); }); });
+  if (!keys.length) return '<p class="muted">Este producto no tiene parámetros en la pestaña Parámetros.</p>';
   const v = (r, k) => r[k] ? esc(r[k]) : '—';
-  return rows.map(r => `<div class="params"><div class="pt">${esc(r['Producto'])}</div>
-    Potencia <b>${v(r, 'Potencia (%)')}</b> · Velocidad <b>${v(r, 'Velocidad (mm/min)')}</b> · Pasadas <b>${v(r, 'Pasadas')}</b> · Líneas/mm <b>${v(r, 'Líneas/mm')}</b><br>
-    Modo <b>${v(r, 'Modo láser')}</b> · Rotativo <b>${v(r, 'Rotativo')}</b>${r['Config rotativo ($100 / $101 / $121)'] ? ` · <b>${esc(r['Config rotativo ($100 / $101 / $121)'])}</b>` : ''}<br>
-    ${r['Enfoque'] ? `Enfoque: ${esc(r['Enfoque'])}<br>` : ''}<span class="pn">${esc(r['Estado'] || '')}${r['Notas'] ? ' · ' + esc(r['Notas']) : ''}</span></div>`).join('');
+  return keys.map(k => { const r = paramRec(k), pr = PARAM_PRODS.find(x => x.k === k); return `<div class="params"><div class="pt">${esc(pr.n)}</div>
+    Potencia <b>${v(r, 'potencia')}</b> · Velocidad <b>${v(r, 'velocidad')}</b> · Modo <b>${v(r, 'modo')}</b> · Pasadas <b>${v(r, 'pasadas')}</b> · Líneas/mm <b>${v(r, 'lineas')}</b><br>
+    Rotativo <b>${v(r, 'rotativo')}</b> · $30 <b>${v(r, 'g30')}</b> · $100 <b>${v(r, 'g100')}</b> · $101 <b>${v(r, 'g101')}</b> · $121 <b>${v(r, 'g121')}</b><br>
+    ${r.enfoque ? `Enfoque: ${esc(r.enfoque)}<br>` : ''}${r.tratamiento ? `Tratamiento: ${esc(r.tratamiento)}<br>` : ''}${r.medida ? `Medida: ${esc(r.medida)}<br>` : ''}<span class="pn">${esc(r.estado || '')}${r.notas ? ' · ' + esc(r.notas) : ''}</span></div>`; }).join('') + '<button class="btn small" data-goparams>Editar parámetros</button>';
+}
+
+/* ---------- pestaña Parámetros (editable) ---------- */
+function renderParams(force) {
+  const grid = document.getElementById('pgrid'); if (!grid) return;
+  if (!force && grid.contains(document.activeElement) && document.activeElement !== grid) return;
+  const nuevo = DEMO || state.parametros.some(r => r.clave);
+  document.getElementById('pnote').innerHTML = nuevo ? '' : '<p>Para poder guardar hay que actualizar el script de Apps Script (Implementar > Administrar implementaciones > Nueva versión) con el Deposito.gs nuevo.</p>';
+  grid.innerHTML = PARAM_PRODS.map(pr => {
+    const r = paramRec(pr.k);
+    const cells = PARAM_CAMPOS.map(c => {
+      if (c.g) return `<div class="sep">${c.g}</div>`;
+      const val = esc(r[c.k] || ''), cls = c.w ? 'w' : '';
+      let inp;
+      if (c.opts) inp = `<select class="i" data-k="${pr.k}" data-f="${c.k}">${c.opts.map(o => `<option value="${esc(o)}" ${o === (r[c.k] || '') ? 'selected' : ''}>${o || '—'}</option>`).join('')}</select>`;
+      else if (c.area) inp = `<textarea class="i" rows="3" data-k="${pr.k}" data-f="${c.k}">${val}</textarea>`;
+      else inp = `<input class="i" value="${val}" data-k="${pr.k}" data-f="${c.k}" ${c.list ? `list="dl_${c.k}"` : ''} autocomplete="off">`;
+      return `<div class="${cls}"><label>${c.l}</label>${inp}</div>`;
+    }).join('');
+    const est = r.estado || 'Falta cargar';
+    return `<div class="pcard" id="pc_${pr.k}"><div class="hd"><h2>${esc(pr.n)}</h2>
+      <select class="i" data-k="${pr.k}" data-f="estado">${[...new Set([...PARAM_ESTADOS, est])].map(o => `<option ${o === est ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select></div>
+      <div class="pf">${cells}</div><div class="sv" id="sv_${pr.k}"></div></div>`;
+  }).join('') + '<datalist id="dl_rotativo"><option>Sí</option><option>No</option><option>Sí, sacando la manija</option></datalist>';
+  grid.querySelectorAll('[data-f]').forEach(el => el.onchange = () => saveParam(el.dataset.k, el.dataset.f, el.value.trim()));
+}
+function saveParam(k, field, value) {
+  let r = state.parametros.find(x => x.clave === k);
+  if (!r) { r = { clave: k }; state.parametros.push(r); }
+  const prev = r[field] || ''; if (value === prev) return;
+  r[field] = value;
+  const sv = document.getElementById('sv_' + k); if (sv) { sv.className = 'sv'; sv.textContent = 'Guardando…'; }
+  call('params', { clave: k, fields: { [field]: value } }).then(res => {
+    if (res.parametros) { const act = document.activeElement; state.parametros = res.parametros; }
+    if (sv) { sv.className = 'sv sv-ok'; sv.textContent = 'Guardado ✓'; }
+  }).catch(err => {
+    r[field] = prev; renderParams(true); toast('No se pudo guardar: ' + err.message);
+  });
+}
+
+/* ---------- pedido: datos editables ---------- */
+function saveField(id, field, value, el) {
+  const cur = () => state.pedidos.find(x => x.id === id);
+  const p = cur(); if (!p) return;
+  value = String(value).trim(); const prev = String(p[field] ?? '');
+  if (value === prev) return;
+  if (field === 'nombre' && !value) { el.value = prev; toast('El nombre no puede quedar vacío'); return; }
+  if (field === 'producto' && !value) { el.value = prev; toast('El producto no puede quedar vacío'); return; }
+  const after = () => { const q = cur(); if (!q) return; ptitle.textContent = q.nombre || 'Sin nombre'; syncBoxes(false); const rec = pbody.querySelector('#prodRec'); if (rec) rec.textContent = items(q).map(i => `${i.cant > 1 ? i.cant + ' × ' : ''}${PRODUCTOS[i.clave].nombre}`).join(' + '); };
+  p[field] = value; after();
+  const tag = el.closest('dd') && el.closest('dd').querySelector('.sv'); if (tag) tag.textContent = 'Guardando…';
+  call('update', { id, fields: { [field]: value } }).then(r => { const q = cur(); if (q && r.pedido) Object.assign(q, r.pedido); if (tag) { tag.textContent = 'Guardado ✓'; tag.className = 'sv sv-ok'; } })
+    .catch(err => { const q = cur(); if (q) q[field] = prev; el.value = prev; after(); if (tag) tag.textContent = ''; toast('No se pudo guardar: ' + err.message); });
 }
 
 function renderOrder(id) {
@@ -1601,12 +1678,13 @@ function renderOrder(id) {
     <span class="state s-${st}">${stLbl}</span>
     ${f.trabado ? `<p style="color:var(--bad);margin:0 0 10px;font-size:13px"><b>!</b> Hace más de 48 h que este pedido no avanza.</p>` : ''}
     <dl>
-      <dt>Producto</dt><dd>${esc(prodTxt)}${prodTxt.toLowerCase().includes(String(p.producto).toLowerCase().trim()) ? '' : `<br><span class="muted">En la planilla: “${esc(p.producto)}”</span>`}</dd>
-      <dt>Cantidad</dt><dd>${esc(p.cantidad || its.reduce((a, b) => a + b.cant, 0))}</dd>
-      <dt>Diseño (idea)</dt><dd>${esc(p.idea || '—')}</dd>
+      <dt>Nombre</dt><dd><input class="i ed" data-f="nombre" value="${esc(p.nombre)}"><span class="sv" style="display:block;text-align:left;margin:2px 0 0"></span></dd>
+      <dt>Producto</dt><dd><input class="i ed" data-f="producto" list="dlProd" value="${esc(p.producto)}"><datalist id="dlProd">${Object.values(PRODUCTOS).map(x => `<option value="${esc(x.nombre)}">`).join("")}</datalist><span class="muted" style="font-size:12px">Se ve como: <span id="prodRec">${esc(prodTxt)}</span></span><span class="sv" style="display:block;text-align:left;margin:2px 0 0"></span></dd>
+      <dt>Cantidad</dt><dd><input class="i ed" type="number" min="1" data-f="cantidad" value="${esc(p.cantidad || its.reduce((a, b) => a + b.cant, 0))}" style="max-width:110px"><span class="sv" style="display:block;text-align:left;margin:2px 0 0"></span></dd>
+      <dt>Diseño (idea)</dt><dd><textarea class="i ed" rows="2" data-f="idea">${esc(p.idea || "")}</textarea><span class="sv" style="display:block;text-align:left;margin:2px 0 0"></span></dd>
       <dt>Color</dt><dd><select class="i" id="fColor" style="padding:5px 8px">${['', ...Object.keys(COLORES).filter(k => !['verde militar', 'marron'].includes(k))].map(k => `<option value="${k}" ${String(p.color).toLowerCase() === k ? 'selected' : ''}>${k || '— de fábrica —'}</option>`).join('')}${p.color && !COLORES[String(p.color).toLowerCase()] ? `<option selected>${esc(p.color)}</option>` : ''}</select></dd>
-      <dt>Envío</dt><dd>${esc(p.envio || '—')}</dd>
-      <dt>WhatsApp</dt><dd>${wa ? `<a href="${wa}" target="_blank" rel="noopener">${esc(p.whatsapp)}</a>` : '—'}</dd>
+      <dt>Envío</dt><dd><input class="i ed" data-f="envio" list="dlEnvio" value="${esc(p.envio || "")}"><datalist id="dlEnvio"><option>Retira</option><option>Envío</option></datalist><span class="sv" style="display:block;text-align:left;margin:2px 0 0"></span></dd>
+      <dt>WhatsApp</dt><dd><input class="i ed" type="tel" data-f="whatsapp" value="${esc(p.whatsapp || "")}">${wa ? `<a href="${wa}" target="_blank" rel="noopener" style="font-size:12px">Abrir WhatsApp</a>` : ""}<span class="sv" style="display:block;text-align:left;margin:2px 0 0"></span></dd>
       <dt>Entró</dt><dd>${fmt(p.ingreso)}</dd>
       ${p.grabado ? `<dt>Grabado</dt><dd>${fmt(p.fGrabado)}</dd>` : ''}
       ${p.entregado ? `<dt>Entregado</dt><dd>${fmt(p.fEntregado)}</dd>` : ''}
@@ -1623,6 +1701,8 @@ function renderOrder(id) {
     <div class="sec"><h3>Parámetros del láser</h3>${paramsHtml(p)}</div>`;
   const $ = s => pbody.querySelector(s);
   $('#fPagado').onchange = e => flag(p, 'pagado', e.target.checked);
+  pbody.querySelectorAll('.ed').forEach(el => { el.onchange = () => saveField(p.id, el.dataset.f, el.value, el); });
+  pbody.querySelectorAll('[data-goparams]').forEach(b => b.onclick = () => { closePanel(); goView('params'); });
   $('#fColor').onchange = e => { const prev = { ...p }; applyLocal({ ...p, color: e.target.value }); call('update', { id: p.id, fields: { color: e.target.value } }).then(r => applyLocal(r.pedido)).catch(err => { applyLocal(prev); toast(err.message); }); };
   if ($('#dUp')) $('#dUp').onclick = () => pickFile(p, 'diseno');
   if ($('#bGrab')) $('#bGrab').onclick = () => flag(p, 'grabado', true);
@@ -1792,7 +1872,8 @@ async function load(first) {
     state = { ...state, pedidos: r.pedidos, stock: r.stock || [], parametros: r.parametros || [], offset: (r.ahora || Date.now()) - Date.now() };
     lastOk = Date.now();
     syncBoxes(!first);
-    if (panelCtx && panelCtx.render && panelCtx.id) panelCtx.render();
+    const editing = document.activeElement && document.activeElement.closest && document.activeElement.closest('#pbody, #pv') && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);
+    if (!editing) { if (panelCtx && panelCtx.render && panelCtx.id) panelCtx.render(); if (view === 'params') renderParams(); }
   } catch (err) {
     if (/PIN/.test(err.message)) { loading = false; await askPin(err.message); return load(first); }
     toast('No se pudo leer la planilla: ' + err.message);
@@ -1840,9 +1921,6 @@ function tick() {
     if (u.flag.visible) { u.flagCloth.rotation.y = Math.sin(t * 5 + g.position.x) * .45; u.flag.position.y = BH + Math.abs(Math.sin(t * 3)) * .06; }
   }
   outlineM.opacity = .35 + .2 * Math.sin(t * 3);
-  // reloj de la pared con la hora real
-  const now = new Date(Date.now() + (state.offset || 0)), sec = now.getSeconds() + now.getMilliseconds() / 1000, min = now.getMinutes() + sec / 60, hr = (now.getHours() % 12) + min / 60;
-  wallG.userData.sh.rotation.z = -sec / 60 * Math.PI * 2; wallG.userData.mh.rotation.z = -min / 60 * Math.PI * 2; wallG.userData.hh.rotation.z = -hr / 12 * Math.PI * 2;
   renderer.render(scene, camera);
   placeLabels();
   requestAnimationFrame(tick);
