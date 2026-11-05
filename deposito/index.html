@@ -394,19 +394,6 @@ floor.rotation.x = -Math.PI / 2; scene.add(floor);
 const wallG = new THREE.Group(); scene.add(wallG);
 {
   put(wallG, BOX(120, 14, .2), M('#f3f4ee', { roughness: 1, emissive: '#f3f4ee', emissiveIntensity: .35 }), 0, 7, -.1, { cast: false });
-  // la marca en letras negras sobre la pared
-  const logo = canvasTex(1024, 256, (c, w, h) => {
-    c.fillStyle = '#1d1f1e'; c.font = `700 170px ${FONT_T}`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('Carey', w / 2, h / 2 + 8);
-  });
-  wallG.userData.logo = logo;
-  put(wallG, new THREE.PlaneGeometry(4.0, 1.0), new THREE.MeshBasicMaterial({ map: logo, transparent: true, toneMapped: false }), 0, 2.35, .02, { cast: false });
-  // reloj mínimo con la hora real
-  const clockG = new THREE.Group(); clockG.position.set(6.2, 2.2, .1); wallG.add(clockG);
-  put(clockG, CYL(.5, .5, .06, 48), M('#f7f8f3'), 0, 0, .03, { rx: Math.PI / 2 });
-  put(clockG, TOR(.5, .025, 12, 48), M('#1d1f1e', { roughness: .4 }), 0, 0, .06, { cast: false });
-  const hand = (len, w, m) => { const p = new THREE.Group(); p.position.z = .07; put(p, RBOX(w, len, .012, w / 2 - .001), m, 0, len / 2 - .03, 0, { cast: false }); clockG.add(p); return p; };
-  wallG.userData.hh = hand(.24, .035, BLACK); wallG.userData.mh = hand(.36, .025, BLACK); wallG.userData.sh = hand(.38, .01, M('#e07a5f'));
-  put(clockG, SPH(.035), BLACK, 0, 0, .08, { cast: false });
 }
 
 /* ---------- productos (formas lisas, sin detalles chicos) ---------- */
@@ -1840,9 +1827,6 @@ function tick() {
     if (u.flag.visible) { u.flagCloth.rotation.y = Math.sin(t * 5 + g.position.x) * .45; u.flag.position.y = BH + Math.abs(Math.sin(t * 3)) * .06; }
   }
   outlineM.opacity = .35 + .2 * Math.sin(t * 3);
-  // reloj de la pared con la hora real
-  const now = new Date(Date.now() + (state.offset || 0)), sec = now.getSeconds() + now.getMilliseconds() / 1000, min = now.getMinutes() + sec / 60, hr = (now.getHours() % 12) + min / 60;
-  wallG.userData.sh.rotation.z = -sec / 60 * Math.PI * 2; wallG.userData.mh.rotation.z = -min / 60 * Math.PI * 2; wallG.userData.hh.rotation.z = -hr / 12 * Math.PI * 2;
   renderer.render(scene, camera);
   placeLabels();
   requestAnimationFrame(tick);
