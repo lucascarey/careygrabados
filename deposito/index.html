@@ -367,6 +367,8 @@ function buildProduct(clave, color) {
     const loop = mesh(new THREE.TorusGeometry(.05, .012, 4, 8), M('#1b1b1b')); loop.position.set(-R(.1), .97, 0); g.add(loop);
     if (clave === 'cliente') { const tag = mesh(new THREE.BoxGeometry(.12, .08, .01), M('#f2e9c9')); tag.position.set(0, .45, R(.168)); g.add(tag); }
   }
+  const ancho = { imperial: 1.55, acero: 1.7 }[clave];
+  if (ancho) { g.scale.set(ancho, 1, ancho); const w = new THREE.Group(); w.add(g); w.userData.clave = clave; return w; }
   g.userData.clave = clave;
   return g;
 }
@@ -405,9 +407,10 @@ function buildBox(p) {
   // solapas: pivote en el borde de arriba de la pared de atrás y la de adelante
   const flaps = [];
   [[-1, 1], [1, -1]].forEach(([side, dir]) => {
-    const piv = new THREE.Group(); piv.position.set(0, BH, side * BD / 2);
-    const f = mesh(new THREE.BoxGeometry(BW, T * 0.8, BD / 2), cardboard); f.position.set(0, 0, dir * BD / 4); piv.add(f);
-    const tape = mesh(new THREE.BoxGeometry(.3, T * .9, .2), tapeM); tape.position.set(0, .004, dir * (BD / 2 - .1)); piv.add(tape);
+    // solapas a los costados (izquierda y derecha) para que no tapen el producto desde la cámara
+    const piv = new THREE.Group(); piv.position.set(side * BW / 2, BH, 0);
+    const f = mesh(new THREE.BoxGeometry(BW / 2, T * 0.8, BD), cardboard); f.position.set(dir * BW / 4, 0, 0); piv.add(f);
+    const tape = mesh(new THREE.BoxGeometry(.2, T * .9, .3), tapeM); tape.position.set(dir * (BW / 2 - .1), .004, 0); piv.add(tape);
     piv.userData = { side, tape }; g.add(piv); flaps.push(piv);
   });
   const outline = new THREE.Mesh(new THREE.BoxGeometry(BW + .1, BH + .1, BD + .1), outlineM); outline.position.y = BH / 2; outline.visible = false; g.add(outline);
@@ -421,12 +424,17 @@ function fillBox(g, p) {
   const c = g.userData.content; while (c.children.length) c.remove(c.children[0]);
   const its = items(p).slice(0, 3);
   const n = its.length, spacing = n > 1 ? 0.42 : 0;
+  let top = 0, lift = T;
+  its.forEach(it => { const h = SIZE[it.clave] * (n > 1 ? .8 : 1); lift = Math.max(lift, THREE.MathUtils.clamp(BH - h * .35, T, .62)); });
+  if (lift > T + .01) { const fill = mesh(new THREE.BoxGeometry(BW - T * 2.2, lift - T, BD - T * 2.2), M('#e9dfc8')); fill.position.y = T + (lift - T) / 2; c.add(fill); }
   its.forEach((it, i) => {
     const pr = buildProduct(it.clave, colorDe(p, it.clave));
-    const s = n > 1 ? 0.75 : 1.0;
-    pr.scale.setScalar(s); pr.position.set((i - (n - 1) / 2) * spacing, T, (i % 2 ? .12 : -.08) * (n > 1 ? 1 : 0));
+    const sc = SIZE[it.clave] * (n > 1 ? .8 : 1);
+    pr.scale.setScalar(sc); pr.position.set((i - (n - 1) / 2) * spacing, lift, (i % 2 ? .12 : -.08) * (n > 1 ? 1 : 0));
+    top = Math.max(top, lift + sc * 1.05);
     c.add(pr);
   });
+  g.userData.topY = top;
   g.traverse(o => { if (o.isMesh) o.userData.box = g; });
   g.userData.sig = sigOf(p);
 }
@@ -436,7 +444,7 @@ function setFlapAngles(g) {
   const o = g.userData.open; // 0 cerrada, 1 abierta
   g.userData.flaps.forEach(piv => {
     const s = piv.userData.side; // -1 atrás, 1 adelante
-    piv.rotation.x = (s === -1 ? -1 : 1) * o * Math.PI * 0.68;
+    piv.rotation.z = -s * o * Math.PI * 0.68;
     piv.userData.tape.visible = o < 0.05;
   });
   g.userData.content.visible = o > 0.12;
@@ -474,30 +482,57 @@ function placeDropZone() { const p = new THREE.Vector3(-1.4, 0, 0).applyMatrix4(
 function inTruckZone(x, z) { const v = truck.worldToLocal(new THREE.Vector3(x, 0, z)); return v.x > -3.1 && v.x < 3 && Math.abs(v.z) < 1.8; }
 
 /* ---------- estantería ---------- */
+// Tamaños a escala (alto en unidades de la escena). Mates a la mitad de un termo.
+const SIZE = { imperial: .5, criollo: .5, acero: .5, mediamanija: 1.0, matesystem: .95, ozz960: .9, ozz500: .74, cliente: .9 };
+const ANCHO = { imperial: .44, criollo: .5, acero: .42, mediamanija: .42, matesystem: .42, ozz960: .32, ozz500: .27, cliente: .32 };
 const shelf = new THREE.Group();
-const SHELF_ORDER = [['imperial', 'criollo', 'acero'], ['mediamanija', 'matesystem'], ['ozz960', 'ozz500']];
-const shelfSlots = {}; // clave -> {group, anchor}
+const SHELF_W = 4.6, SHELF_D = .8;
+// de abajo hacia arriba: [altura del estante, productos]
+const SHELF_LEVELS = [[.15, ['ozz960', 'ozz500']], [1.45, ['mediamanija', 'matesystem']], [2.75, ['imperial', 'criollo']], [3.55, ['acero']]];
+const SHELF_TOP = 4.35;
+const shelfSlots = {}; // clave -> {lane, items, top, x, y, w}
 {
   const wood = M('#c8a879'), woodD = M('#a88a5f');
-  const W = 3.6, D = .75, levels = [.15, 1.45, 2.75, 4.05];
-  levels.forEach(y => { const b = mesh(new THREE.BoxGeometry(W, .08, D), wood); b.position.set(0, y, 0); shelf.add(b); });
-  [-W / 2, W / 2].forEach(x => { const b = mesh(new THREE.BoxGeometry(.08, 4.2, D), woodD); b.position.set(x, 2.1, 0); shelf.add(b); });
-  const back = mesh(new THREE.BoxGeometry(W, 4.2, .04), M('#e8dcc6')); back.position.set(0, 2.1, -D / 2); shelf.add(back);
-  const sign = mesh(new THREE.BoxGeometry(1.6, .32, .04), M('#2D4530')); sign.position.set(0, 4.45, -.2); shelf.add(sign);
-  const size = { imperial: .9, criollo: .8, acero: .85, mediamanija: 1.15, matesystem: 1.1, ozz960: 1.1, ozz500: .92 };
-  SHELF_ORDER.forEach((fila, li) => {
-    const y = levels[2 - li] + .04;
+  [...SHELF_LEVELS.map(l => l[0]), SHELF_TOP].forEach(y => { const b = mesh(new THREE.BoxGeometry(SHELF_W, .08, SHELF_D), wood); b.position.set(0, y, 0); shelf.add(b); });
+  [-SHELF_W / 2, SHELF_W / 2].forEach(x => { const b = mesh(new THREE.BoxGeometry(.08, SHELF_TOP + .1, SHELF_D), woodD); b.position.set(x, (SHELF_TOP + .1) / 2, 0); shelf.add(b); });
+  const back = mesh(new THREE.BoxGeometry(SHELF_W, SHELF_TOP, .04), M('#e8dcc6')); back.position.set(0, SHELF_TOP / 2, -SHELF_D / 2); shelf.add(back);
+  const sign = mesh(new THREE.BoxGeometry(1.6, .32, .04), M('#2D4530')); sign.position.set(0, SHELF_TOP + .35, -.2); shelf.add(sign);
+  const hitM = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false });
+  SHELF_LEVELS.forEach(([y, fila], li) => {
+    const next = (SHELF_LEVELS[li + 1] || [SHELF_TOP])[0];
+    const laneW = SHELF_W / fila.length;
     fila.forEach((k, i) => {
-      const pr = buildProduct(k); pr.scale.setScalar(size[k]);
-      pr.position.set((i - (fila.length - 1) / 2) * (W / fila.length), y, 0);
-      pr.traverse(o => { if (o.isMesh) o.userData.shelfItem = k; });
-      shelf.add(pr);
-      shelfSlots[k] = { group: pr, top: new THREE.Vector3(pr.position.x, y + size[k] * 1.1 + .1, .1) };
+      const x = -SHELF_W / 2 + laneW * (i + .5);
+      const hit = new THREE.Mesh(new THREE.BoxGeometry(laneW - .1, next - y - .1, SHELF_D - .1), hitM);
+      hit.position.set(x, y + (next - y) / 2, 0); hit.userData.shelfItem = k; hit.userData.shelf = true; shelf.add(hit);
+      const items = new THREE.Group(); shelf.add(items);
+      shelfSlots[k] = { items, x, y: y + .04, w: laneW - .16, top: new THREE.Vector3(x, Math.min(next - .05, y + SIZE[k] * 1.1 + .25), .3) };
     });
   });
   shelf.traverse(o => { if (o.isMesh) o.userData.shelf = true; });
   shelf.position.set(-9.4, 0, -4.9); shelf.rotation.y = 0.35;
   scene.add(shelf);
+}
+// Pone en el estante tantas unidades como haya en stock (hasta lo que entra, en dos filas).
+function rebuildShelfStock() {
+  Object.entries(shelfSlots).forEach(([k, s]) => {
+    const st = state.stock.find(x => x.clave === k);
+    const n = st && st.cantidad != null && !isNaN(st.cantidad) ? Math.max(0, st.cantidad) : 0;
+    if (s.shown === n) return; s.shown = n;
+    while (s.items.children.length) s.items.remove(s.items.children[0]);
+    const step = ANCHO[k] + .05, perRow = Math.max(1, Math.floor(s.w / step)), cap = perRow * 2;
+    const vis = Math.min(n, cap);
+    for (let i = 0; i < vis; i++) {
+      const row = i < perRow ? 0 : 1, col = row ? i - perRow : i;
+      const inRow = row ? vis - perRow : Math.min(vis, perRow);
+      const pr = buildProduct(k); pr.scale.setScalar(SIZE[k]);
+      pr.position.set(s.x + (col - (inRow - 1) / 2) * step + (row ? step / 2 : 0) * 0, s.y, row ? -.17 : .14);
+      pr.rotation.y = ((i * 53) % 7 - 3) * .15;
+      pr.traverse(o => { if (o.isMesh) { o.userData.shelfItem = k; o.userData.shelf = true; } });
+      s.items.add(pr);
+    }
+    s.cap = cap;
+  });
 }
 
 /* ---------- corcho ---------- */
@@ -557,11 +592,11 @@ const isPortrait = () => innerWidth / innerHeight < 0.9;
 
 function fitMain() {
   const portrait = isPortrait();
-  const dir = portrait ? new THREE.Vector3(0, 1.7, 1).normalize() : new THREE.Vector3(0, 1.2, 1).normalize();
+  const dir = portrait ? new THREE.Vector3(0, .95, 1).normalize() : new THREE.Vector3(0, .5, 1).normalize();
   const target = portrait ? new THREE.Vector3(-0.4, 0, 1.6) : new THREE.Vector3(0, 0, -1.2);
   const pts = portrait
     ? [[-4.2, 0, 7.2], [3.4, 0, 7.2], [-4.2, 0, -3.9], [3.4, 0, -3.9]]
-    : [[-10.6, 0, 3.0], [10.0, 0, 3.0], [-10.6, 4.6, -4.6], [10.0, 3.2, -1], [-2.2, 4.9, -6.1]];
+    : [[-10.6, 0, 1.4], [10.0, 0, 1.4], [-10.6, 4.6, -4.6], [10.0, 3.2, -1], [-2.2, 4.9, -6.1]];
   camera.fov = portrait ? 40 : 32; camera.updateProjectionMatrix();
   let lo = 4, hi = 80;
   for (let k = 0; k < 30; k++) {
@@ -583,7 +618,7 @@ function frontOf(obj, w, h, yOff = 0) {
 }
 function computeViews() {
   views.main = fitMain();
-  views.shelf = frontOf(shelf, 4.2, 5, 2.3);
+  views.shelf = frontOf(shelf, 5.0, 5.2, 2.4);
   views.board = frontOf(board, BOARD_W + .4, BOARD_H + .4, 0);
 }
 function goView(v, instant) {
@@ -686,7 +721,7 @@ function placeLabels() {
   for (const [id, l] of labels) {
     const g = boxes.get(id);
     if (!g || !show || g.userData.leaving) { l.el.style.display = 'none'; continue; }
-    _v.set(g.position.x, g.position.y + BH + 1.15 * (g.userData.open > .5 ? 1 : .35) + .1, g.position.z).project(camera);
+    _v.set(g.position.x, g.position.y + (g.userData.open > .5 ? Math.max(BH + .45, (g.userData.topY || 1) + .1) : BH + .3), g.position.z).project(camera);
     l.el.style.display = '';
     l.el.style.transform = `translate(-50%,-100%) translate(${(_v.x * .5 + .5) * innerWidth}px, ${(-_v.y * .5 + .5) * innerHeight}px)`;
   }
@@ -696,13 +731,15 @@ function placeLabels() {
 /* ---------- etiquetas de stock ---------- */
 const shelfLabels = {};
 function updateShelfLabels() {
+  rebuildShelfStock();
   Object.keys(shelfSlots).forEach(k => {
     let el = shelfLabels[k];
     if (!el) { el = document.createElement('div'); el.className = 'slbl'; labelsEl.appendChild(el); shelfLabels[k] = el; }
     const s = state.stock.find(x => x.clave === k);
     const n = s && s.cantidad !== null && s.cantidad !== undefined && !isNaN(s.cantidad) ? s.cantidad : null;
-    el.textContent = n === null ? 'sin contar' : 'x' + n;
-    el.className = 'slbl' + (n === null ? ' none' : (s.minimo !== null && n <= s.minimo) ? ' low' : '');
+    const nom = PRODUCTOS[k].nombre.replace('Termo ', '').replace('Botella ', '').replace(' (calabaza)', '');
+    el.textContent = nom + ' · ' + (n === null ? 'sin contar' : n);
+    el.className = 'slbl' + (n === null ? ' none' : (n === 0 || (s.minimo !== null && n <= s.minimo)) ? ' low' : '');
   });
 }
 function placeShelfLabels() {
